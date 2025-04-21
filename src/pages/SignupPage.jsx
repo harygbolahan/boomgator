@@ -33,7 +33,7 @@ export function SignupPage() {
       
       // In a real app, handle signup logic here
       localStorage.setItem("isLoggedIn", "true");
-      navigate("/dashboard");
+      navigate("/setup-guide");
     } catch (err) {
       setError("Registration failed. Please try again.");
     } finally {
@@ -47,7 +47,7 @@ export function SignupPage() {
       // Simulate API call with timeout
       await new Promise(resolve => setTimeout(resolve, 1000));
       localStorage.setItem("isLoggedIn", "true");
-      navigate("/dashboard");
+      navigate("/setup-guide");
     } catch (err) {
       setError("Google authentication failed");
     } finally {
@@ -61,7 +61,7 @@ export function SignupPage() {
       // Simulate API call with timeout
       await new Promise(resolve => setTimeout(resolve, 1000));
       localStorage.setItem("isLoggedIn", "true");
-      navigate("/dashboard");
+      navigate("/setup-guide");
     } catch (err) {
       setError("Facebook authentication failed");
     } finally {
@@ -72,21 +72,21 @@ export function SignupPage() {
   return (
     <div className="min-h-screen bg-background flex justify-center">
       {/* Form */}
-      <div className="flex flex-col justify-center items-center p-8 w-full max-w-md">
+      <div className="flex flex-col justify-center items-center p-4 sm:p-8 w-full max-w-md">
         <div className="w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold">Create your account</h1>
-            <p className="text-muted-foreground mt-2">Start your 14-day free trial, no credit card required</p>
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold">Create your account</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-2">Start your 14-day free trial, no credit card required</p>
           </div>
           
           {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
+            <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg">
               {error}
             </div>
           )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium mb-1">
                   First Name
@@ -96,7 +96,7 @@ export function SignupPage() {
                   name="firstName"
                   type="text"
                   required
-                  className="w-full p-2 border rounded-lg bg-background"
+                  className="w-full p-2 text-sm border rounded-lg bg-background"
                   placeholder="John"
                   value={form.firstName}
                   onChange={handleChange}
@@ -111,7 +111,7 @@ export function SignupPage() {
                   name="lastName"
                   type="text"
                   required
-                  className="w-full p-2 border rounded-lg bg-background"
+                  className="w-full p-2 text-sm border rounded-lg bg-background"
                   placeholder="Doe"
                   value={form.lastName}
                   onChange={handleChange}
@@ -128,7 +128,7 @@ export function SignupPage() {
                 name="email"
                 type="email"
                 required
-                className="w-full p-2 border rounded-lg bg-background"
+                className="w-full p-2 text-sm border rounded-lg bg-background"
                 placeholder="your@email.com"
                 value={form.email}
                 onChange={handleChange}
@@ -144,7 +144,7 @@ export function SignupPage() {
                 name="password"
                 type="password"
                 required
-                className="w-full p-2 border rounded-lg bg-background"
+                className="w-full p-2 text-sm border rounded-lg bg-background"
                 placeholder="••••••••"
                 value={form.password}
                 onChange={handleChange}
@@ -160,11 +160,11 @@ export function SignupPage() {
                 name="terms"
                 type="checkbox"
                 required
-                className="h-4 w-4 mt-1 rounded border-gray-300"
+                className="h-4 w-4 mt-0.5 rounded border-gray-300 text-primary focus:ring-primary"
                 checked={form.terms}
                 onChange={handleChange}
               />
-              <label htmlFor="terms" className="ml-2 block text-sm text-muted-foreground">
+              <label htmlFor="terms" className="ml-2 block text-xs sm:text-sm text-muted-foreground">
                 I agree to the{" "}
                 <a href="#" className="text-primary hover:underline">
                   Terms of Service
@@ -178,55 +178,70 @@ export function SignupPage() {
             
             <Button 
               type="submit" 
-              className="w-full"
+              className="w-full text-sm"
               disabled={isLoading}
             >
               {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
           
-          <div className="my-6 flex items-center">
-            <div className="flex-grow border-t"></div>
-            <span className="px-3 text-muted-foreground text-sm">or sign up with</span>
-            <div className="flex-grow border-t"></div>
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
+              </div>
+              <div className="relative flex justify-center text-xs sm:text-sm text-gray-500">
+                <span className="px-2 bg-background">Or sign up with</span>
+              </div>
+            </div>
+            
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button 
+                type="button"
+                className="flex items-center justify-center gap-2 py-2 px-3 sm:px-4 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                onClick={handleGoogleSignUp}
+                disabled={isLoading}
+                tabIndex={0}
+                aria-label="Sign up with Google"
+              >
+                <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                  <path d="M1 1h22v22H1z" fill="none" />
+                </svg>
+                Google
+              </button>
+              <button 
+                type="button"
+                className="flex items-center justify-center gap-2 py-2 px-3 sm:px-4 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                onClick={handleFacebookSignUp}
+                disabled={isLoading}
+                tabIndex={0}
+                aria-label="Sign up with Facebook"
+              >
+                <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="#1877F2" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                Facebook
+              </button>
+            </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            <button 
-              type="button"
-              className="p-2 border rounded-lg hover:bg-accent flex items-center justify-center gap-2"
-              onClick={handleGoogleSignUp}
-              disabled={isLoading}
-              tabIndex={0}
-              aria-label="Sign up with Google"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path
-                  fill="currentColor"
-                  d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"
-                />
-              </svg>
-              Google
-            </button>
-            <button 
-              type="button"
-              className="p-2 border rounded-lg hover:bg-accent flex items-center justify-center gap-2"
-              onClick={handleFacebookSignUp}
-              disabled={isLoading}
-              tabIndex={0}
-              aria-label="Sign up with Facebook"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path
-                  fill="currentColor"
-                  d="M20.007,3H3.993C3.445,3,3,3.445,3,3.993v16.013C3,20.555,3.445,21,3.993,21h8.621v-6.971h-2.346v-2.717h2.346V9.31c0-2.325,1.42-3.591,3.494-3.591c0.993,0,1.847,0.074,2.096,0.107v2.43l-1.438,0.001c-1.128,0-1.346,0.536-1.346,1.323v1.734h2.69l-0.35,2.717h-2.34V21h4.587C20.555,21,21,20.555,21,20.007V3.993C21,3.445,20.555,3,20.007,3z"
-                />
-              </svg>
-              Facebook
-            </button>
-          </div>
-          
-          <p className="mt-8 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-xs sm:text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link to="/login" className="text-primary hover:underline">
               Log in

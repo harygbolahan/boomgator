@@ -1,26 +1,68 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Check, CreditCard } from "lucide-react";
 
 export function AccountPage() {
   const [activeTab, setActiveTab] = useState("profile");
+  const [emailNotificationStates, setEmailNotificationStates] = useState(() => 
+    emailNotifications.map(notification => notification.enabled)
+  );
+  const [pushNotificationStates, setPushNotificationStates] = useState(() => 
+    pushNotifications.map(notification => notification.enabled)
+  );
+  
+  const handleToggleEmailNotification = (index) => {
+    const newStates = [...emailNotificationStates];
+    newStates[index] = !newStates[index];
+    setEmailNotificationStates(newStates);
+  };
+  
+  const handleTogglePushNotification = (index) => {
+    const newStates = [...pushNotificationStates];
+    newStates[index] = !newStates[index];
+    setPushNotificationStates(newStates);
+  };
+  
+  const handleTabKeyDown = (e, tabId) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setActiveTab(tabId);
+    }
+  };
+  
+  const handleSaveChanges = () => {
+    // Implementation for saving profile changes
+    console.log('Saving profile changes');
+  };
+  
+  const handlePasswordUpdate = () => {
+    // Implementation for updating password
+    console.log('Updating password');
+  };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Account Settings</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Account Settings</h2>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Manage your account preferences and settings.
         </p>
       </div>
       
       {/* Tab navigation */}
-      <div className="border-b">
-        <nav className="flex space-x-4">
+      <div className="border-b overflow-x-auto" role="tablist" aria-label="Account settings tabs">
+        <nav className="flex space-x-2 sm:space-x-4 min-w-max">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`${tab.id}-panel`}
+              id={`${tab.id}-tab`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
+              className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors ${
                 activeTab === tab.id
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -34,20 +76,32 @@ export function AccountPage() {
       
       {/* Profile Tab */}
       {activeTab === "profile" && (
-        <div className="space-y-6">
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <h3 className="text-lg font-medium mb-6">Personal Information</h3>
+        <div 
+          role="tabpanel" 
+          id="profile-panel" 
+          aria-labelledby="profile-tab"
+          className="space-y-4 sm:space-y-6"
+        >
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Personal Information</h3>
             
-            <div className="flex flex-col md:flex-row gap-8">
+            <div className="flex flex-col md:flex-row gap-4 sm:gap-8">
               <div className="flex flex-col items-center md:items-start">
-                <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center text-2xl mb-4">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-accent flex items-center justify-center text-xl sm:text-2xl mb-3 sm:mb-4">
                   JD
                 </div>
-                <Button variant="outline" size="sm">Change Avatar</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs"
+                  aria-label="Change avatar"
+                >
+                  Change Avatar
+                </Button>
               </div>
               
-              <div className="flex-1 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex-1 space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label htmlFor="firstName" className="block text-sm font-medium mb-1">
                       First Name
@@ -55,8 +109,9 @@ export function AccountPage() {
                     <input
                       id="firstName"
                       type="text"
-                      className="w-full p-2 border rounded-lg bg-background"
+                      className="w-full p-2 text-sm border rounded-lg bg-background"
                       defaultValue="John"
+                      aria-required="true"
                     />
                   </div>
                   <div>
@@ -66,8 +121,9 @@ export function AccountPage() {
                     <input
                       id="lastName"
                       type="text"
-                      className="w-full p-2 border rounded-lg bg-background"
+                      className="w-full p-2 text-sm border rounded-lg bg-background"
                       defaultValue="Doe"
+                      aria-required="true"
                     />
                   </div>
                 </div>
@@ -79,8 +135,9 @@ export function AccountPage() {
                   <input
                     id="email"
                     type="email"
-                    className="w-full p-2 border rounded-lg bg-background"
+                    className="w-full p-2 text-sm border rounded-lg bg-background"
                     defaultValue="john.doe@example.com"
+                    aria-required="true"
                   />
                 </div>
                 
@@ -91,7 +148,7 @@ export function AccountPage() {
                   <input
                     id="company"
                     type="text"
-                    className="w-full p-2 border rounded-lg bg-background"
+                    className="w-full p-2 text-sm border rounded-lg bg-background"
                     defaultValue="Acme Inc."
                   />
                 </div>
@@ -103,13 +160,18 @@ export function AccountPage() {
                   <input
                     id="role"
                     type="text"
-                    className="w-full p-2 border rounded-lg bg-background"
+                    className="w-full p-2 text-sm border rounded-lg bg-background"
                     defaultValue="Marketing Manager"
                   />
                 </div>
                 
                 <div className="flex justify-end">
-                  <Button>Save Changes</Button>
+                  <Button 
+                    className="text-xs sm:text-sm"
+                    onClick={handleSaveChanges}
+                  >
+                    Save Changes
+                  </Button>
                 </div>
               </div>
             </div>
@@ -119,86 +181,113 @@ export function AccountPage() {
       
       {/* Security Tab */}
       {activeTab === "security" && (
-        <div className="space-y-6">
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <h3 className="text-lg font-medium mb-6">Password</h3>
+        <div 
+          role="tabpanel" 
+          id="security-panel" 
+          aria-labelledby="security-tab"
+          className="space-y-4 sm:space-y-6"
+        >
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Change Password</h3>
             
-            <div className="space-y-4 max-w-md">
+            <div className="grid gap-4">
               <div>
-                <label htmlFor="currentPassword" className="block text-sm font-medium mb-1">
-                  Current Password
-                </label>
+                <label htmlFor="currentPassword" className="block text-sm font-medium mb-1.5">Current Password</label>
                 <input
                   id="currentPassword"
                   type="password"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="Enter your current password"
+                  aria-required="true"
                 />
               </div>
               
               <div>
-                <label htmlFor="newPassword" className="block text-sm font-medium mb-1">
-                  New Password
-                </label>
+                <label htmlFor="newPassword" className="block text-sm font-medium mb-1.5">New Password</label>
                 <input
                   id="newPassword"
                   type="password"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="Enter your new password"
+                  aria-required="true"
                 />
               </div>
               
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
-                  Confirm New Password
-                </label>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1.5">Confirm New Password</label>
                 <input
                   id="confirmPassword"
                   type="password"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="Confirm your new password"
+                  aria-required="true"
                 />
               </div>
               
-              <div className="flex justify-end">
-                <Button>Update Password</Button>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <h3 className="text-lg font-medium mb-6">Two-Factor Authentication</h3>
-            
-            <div className="flex items-center justify-between">
               <div>
-                <p className="mb-1">Two-factor authentication is disabled.</p>
-                <p className="text-sm text-muted-foreground">Add an extra layer of security to your account by enabling two-factor authentication.</p>
+                <Button 
+                  className="text-xs sm:text-sm"
+                  onClick={handlePasswordUpdate}
+                >
+                  Update Password
+                </Button>
               </div>
-              <Button variant="outline">Enable</Button>
             </div>
           </div>
           
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <h3 className="text-lg font-medium mb-6">Sessions</h3>
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Two-Factor Authentication</h3>
             
             <div className="space-y-4">
+              <div className="flex items-start sm:items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium">Authenticator App</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Use an authenticator app to generate one-time codes.</p>
+                </div>
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm">Setup</Button>
+              </div>
+              
+              <div className="flex items-start sm:items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium">Text Message</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Use your phone number to receive codes via SMS.</p>
+                </div>
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm">Setup</Button>
+              </div>
+              
+              <div className="flex items-start sm:items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium">Backup Codes</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Generate backup codes to use when you don't have access to other methods.</p>
+                </div>
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm">Generate</Button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Active Sessions</h3>
+            
+            <div className="space-y-3 sm:space-y-4">
               {sessions.map((session, index) => (
-                <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-2 sm:gap-0">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{session.device}</span>
+                      <span className="font-medium text-sm sm:text-base">{session.device}</span>
                       {session.current && (
                         <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
                           Current
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      <span>{session.location}</span> • <span>Last active {session.lastActive}</span>
+                    <div className="text-xs sm:text-sm text-muted-foreground mt-1">
+                      {session.location} • {session.lastActive}
                     </div>
                   </div>
                   {!session.current && (
-                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">Sign Out</Button>
+                    <Button variant="ghost" size="sm" className="text-xs sm:text-sm text-red-500 hover:text-red-700">
+                      Revoke
+                    </Button>
                   )}
                 </div>
               ))}
@@ -209,106 +298,103 @@ export function AccountPage() {
       
       {/* Billing Tab */}
       {activeTab === "billing" && (
-        <div className="space-y-6">
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <div className="flex justify-between items-start mb-6">
+        <div 
+          role="tabpanel" 
+          id="billing-panel" 
+          aria-labelledby="billing-tab"
+          className="space-y-4 sm:space-y-6"
+        >
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Current Plan</h3>
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-4 border-b gap-2 sm:gap-4">
               <div>
-                <h3 className="text-lg font-medium">Current Plan</h3>
-                <p className="text-muted-foreground">You are currently on the Professional plan.</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm sm:text-base font-medium">Pro Plan</span>
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    Current
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">$29/month • Renews on May 12, 2023</p>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline">Change Plan</Button>
-                <Button variant="ghost" className="text-red-500 hover:text-red-700">Cancel Plan</Button>
+              <div className="flex flex-col xs:flex-row gap-2">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm">Change Plan</Button>
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm text-red-500 hover:text-red-700">Cancel</Button>
               </div>
             </div>
             
-            <div className="p-4 border rounded-lg bg-accent/10">
-              <div className="flex justify-between items-center mb-2">
-                <div className="font-semibold">Professional Plan</div>
-                <div className="font-bold">$49/month</div>
-              </div>
-              <div className="text-sm text-muted-foreground">Renews on September 12, 2023</div>
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span>✓</span>
-                  <span>Unlimited social accounts</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>✓</span>
+            <div>
+              <h4 className="text-sm font-medium mb-2">Plan Features</h4>
+              <ul className="grid gap-2 text-xs sm:text-sm">
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span>Unlimited projects</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span>Unlimited team members</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500" />
                   <span>Advanced analytics</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>✓</span>
-                  <span>100 scheduled posts per month</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>✓</span>
-                  <span>10 automation workflows</span>
-                </div>
-              </div>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span>Priority support</span>
+                </li>
+              </ul>
             </div>
           </div>
           
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <h3 className="text-lg font-medium mb-6">Payment Method</h3>
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Payment Method</h3>
             
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-6 bg-indigo-100 rounded flex items-center justify-center">
-                    💳
-                  </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-4 border-b gap-2 sm:gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-muted rounded-md h-10 w-14 flex items-center justify-center">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm sm:text-base font-medium">•••• •••• •••• 4242</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Expires 12/2024</p>
+                </div>
+              </div>
+              <div className="flex flex-col xs:flex-row gap-2">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm">Update</Button>
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm">Add New</Button>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-sm font-medium mb-3">Billing Address</h4>
+              <p className="text-xs sm:text-sm mb-4">
+                John Doe<br />
+                123 Main St<br />
+                San Francisco, CA 94103<br />
+                United States
+              </p>
+              <Button variant="outline" size="sm" className="text-xs sm:text-sm">Edit Address</Button>
+            </div>
+          </div>
+          
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Billing History</h3>
+            
+            <div className="space-y-3 sm:space-y-4">
+              {[...Array(3)].map((_, index) => (
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-2 sm:gap-0">
                   <div>
-                    <div className="font-medium">Visa ending in 4242</div>
-                    <div className="text-sm text-muted-foreground">Expires 12/2025</div>
+                    <p className="text-sm sm:text-base font-medium">Pro Plan - Monthly</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {index === 0 ? "May 12, 2023" : index === 1 ? "April 12, 2023" : "March 12, 2023"}
+                    </p>
+                  </div>
+                  <div className="flex flex-col xs:flex-row gap-2 sm:gap-4 items-start sm:items-center">
+                    <span className="text-sm font-medium">$29.00</span>
+                    <Button variant="ghost" size="sm" className="text-xs sm:text-sm">View Invoice</Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">Edit</Button>
-                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">Remove</Button>
-                </div>
-              </div>
-              
-              <Button variant="outline">Add Payment Method</Button>
-            </div>
-          </div>
-          
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <h3 className="text-lg font-medium mb-6">Billing History</h3>
-            
-            <div className="overflow-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left border-b">
-                    <th className="pb-3 font-medium">Date</th>
-                    <th className="pb-3 font-medium">Description</th>
-                    <th className="pb-3 font-medium">Amount</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Invoice</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {billingHistory.map((item, index) => (
-                    <tr key={index} className="border-b last:border-0">
-                      <td className="py-4">{item.date}</td>
-                      <td className="py-4">{item.description}</td>
-                      <td className="py-4">{item.amount}</td>
-                      <td className="py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          item.status === "Paid" 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="py-4">
-                        <Button variant="ghost" size="sm">PDF</Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              ))}
             </div>
           </div>
         </div>
@@ -316,42 +402,147 @@ export function AccountPage() {
       
       {/* Notifications Tab */}
       {activeTab === "notifications" && (
-        <div className="space-y-6">
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <h3 className="text-lg font-medium mb-6">Email Notifications</h3>
+        <div 
+          role="tabpanel" 
+          id="notifications-panel" 
+          aria-labelledby="notifications-tab"
+          className="space-y-4 sm:space-y-6"
+        >
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Email Notifications</h3>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-5">
               {emailNotifications.map((notification, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                <div key={index} className="flex items-start sm:items-center justify-between">
                   <div>
-                    <div className="font-medium">{notification.title}</div>
-                    <div className="text-sm text-muted-foreground">{notification.description}</div>
+                    <p className="font-medium text-sm sm:text-base">{notification.title}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{notification.description}</p>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked={notification.enabled} className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  </label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={emailNotificationStates[index]}
+                    aria-label={`${notification.title} notifications ${emailNotificationStates[index] ? 'enabled' : 'disabled'}`}
+                    onClick={() => handleToggleEmailNotification(index)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleToggleEmailNotification(index);
+                      }
+                    }}
+                    tabIndex={0}
+                    className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full border-2 border-transparent ${
+                      emailNotificationStates[index] ? 'bg-indigo-600' : 'bg-gray-200'
+                    } cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50`}
+                  >
+                    <span 
+                      className={`${
+                        emailNotificationStates[index] ? 'translate-x-5 bg-white' : 'translate-x-0 bg-white'
+                      } pointer-events-none relative inline-block h-4 w-4 rounded-full shadow transform ring-0 transition ease-in-out duration-200`} 
+                    />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
           
-          <div className="bg-card rounded-xl shadow-sm border p-6">
-            <h3 className="text-lg font-medium mb-6">Push Notifications</h3>
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Push Notifications</h3>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-5">
               {pushNotifications.map((notification, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                <div key={index} className="flex items-start sm:items-center justify-between">
                   <div>
-                    <div className="font-medium">{notification.title}</div>
-                    <div className="text-sm text-muted-foreground">{notification.description}</div>
+                    <p className="font-medium text-sm sm:text-base">{notification.title}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{notification.description}</p>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked={notification.enabled} className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  </label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={pushNotificationStates[index]}
+                    aria-label={`${notification.title} notifications ${pushNotificationStates[index] ? 'enabled' : 'disabled'}`}
+                    onClick={() => handleTogglePushNotification(index)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleTogglePushNotification(index);
+                      }
+                    }}
+                    tabIndex={0}
+                    className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full border-2 border-transparent ${
+                      pushNotificationStates[index] ? 'bg-indigo-600' : 'bg-gray-200'
+                    } cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50`}
+                  >
+                    <span 
+                      className={`${
+                        pushNotificationStates[index] ? 'translate-x-5 bg-white' : 'translate-x-0 bg-white'
+                      } pointer-events-none relative inline-block h-4 w-4 rounded-full shadow transform ring-0 transition ease-in-out duration-200`} 
+                    />
+                  </button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* API Tab */}
+      {activeTab === "api" && (
+        <div 
+          role="tabpanel" 
+          id="api-panel" 
+          aria-labelledby="api-tab"
+          className="space-y-4 sm:space-y-6"
+        >
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">API Keys</h3>
+            
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-3 sm:gap-0">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm sm:text-base">Production Key</span>
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input 
+                      type="password" 
+                      readOnly
+                      value="••••••••••••••••"
+                      className="text-xs sm:text-sm bg-transparent border-none p-0 outline-none" 
+                    />
+                    <button className="text-xs sm:text-sm text-primary">Show</button>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">Created on Aug 12, 2023</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">Copy</Button>
+                  <Button variant="ghost" size="sm" className="text-xs sm:text-sm text-red-500 hover:text-red-700">Revoke</Button>
+                </div>
+              </div>
+              
+              <Button variant="outline" className="text-xs sm:text-sm">Generate New API Key</Button>
+            </div>
+          </div>
+          
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Webhooks</h3>
+            
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-3 sm:gap-0">
+                <div>
+                  <div className="font-medium text-sm sm:text-base">https://example.com/webhook</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">For post engagement events</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">Test</Button>
+                  <Button variant="ghost" size="sm" className="text-xs sm:text-sm text-red-500 hover:text-red-700">Delete</Button>
+                </div>
+              </div>
+              
+              <Button variant="outline" className="text-xs sm:text-sm">Add Webhook Endpoint</Button>
             </div>
           </div>
         </div>
@@ -365,98 +556,86 @@ const tabs = [
   { id: "profile", name: "Profile" },
   { id: "security", name: "Security" },
   { id: "billing", name: "Billing" },
-  { id: "notifications", name: "Notifications" }
+  { id: "notifications", name: "Notifications" },
+  { id: "api", name: "API" }
 ];
 
 const sessions = [
   {
-    device: "Windows 10 - Chrome",
-    location: "New York, USA",
-    lastActive: "Now",
+    device: "MacBook Pro",
+    location: "San Francisco, CA",
+    lastActive: "Just now",
     current: true
   },
   {
-    device: "MacOS - Safari",
-    location: "New York, USA",
-    lastActive: "2 days ago",
+    device: "iPhone 12",
+    location: "San Francisco, CA",
+    lastActive: "2 hours ago",
     current: false
   },
   {
-    device: "iPhone 13 - Safari",
-    location: "Boston, USA",
-    lastActive: "5 days ago",
+    device: "Windows PC",
+    location: "New York, NY",
+    lastActive: "3 days ago",
     current: false
   }
 ];
 
-const billingHistory = [
+const invoices = [
   {
     date: "Aug 12, 2023",
     description: "Professional Plan - Monthly",
-    amount: "$49.00",
-    status: "Paid"
+    amount: "$49.00"
   },
   {
     date: "Jul 12, 2023",
     description: "Professional Plan - Monthly",
-    amount: "$49.00",
-    status: "Paid"
+    amount: "$49.00"
   },
   {
     date: "Jun 12, 2023",
     description: "Professional Plan - Monthly",
-    amount: "$49.00",
-    status: "Paid"
+    amount: "$49.00"
   }
 ];
 
 const emailNotifications = [
   {
-    title: "Social Media Alerts",
-    description: "Receive notifications when someone mentions or tags your accounts",
+    title: "Account activity",
+    description: "Get notified when there is activity on your account like logins and password changes.",
     enabled: true
   },
   {
-    title: "Comment Notifications",
-    description: "Receive notifications when someone comments on your posts",
+    title: "Billing alerts",
+    description: "Get notified about upcoming payments, billing issues, etc.",
     enabled: true
   },
   {
-    title: "Billing Notifications",
-    description: "Receive notifications about your billing, invoices, and plan",
-    enabled: true
-  },
-  {
-    title: "Product Updates",
-    description: "Receive notifications about new features and updates",
+    title: "Post engagement",
+    description: "Get notified when someone likes, comments, or shares your posts.",
     enabled: false
   },
   {
-    title: "Marketing Emails",
-    description: "Receive promotional offers and marketing materials",
-    enabled: false
+    title: "Product updates",
+    description: "Get notified about new features and improvements.",
+    enabled: true
   }
 ];
 
 const pushNotifications = [
   {
-    title: "Automation Triggers",
-    description: "Receive notifications when automations are triggered",
+    title: "Social activity",
+    description: "Notifications about likes, comments, and shares on your posts.",
     enabled: true
   },
   {
-    title: "Post Performance",
-    description: "Receive notifications about post engagement and analytics",
-    enabled: true
+    title: "Analytics reports",
+    description: "Weekly and monthly analytics reports.",
+    enabled: false
   },
   {
-    title: "Direct Messages",
-    description: "Receive notifications for new direct messages",
-    enabled: true
-  },
-  {
-    title: "System Alerts",
-    description: "Receive important system notifications and alerts",
+    title: "Campaign status",
+    description: "Updates about your running campaigns and automations.",
     enabled: true
   }
 ]; 

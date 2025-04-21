@@ -1,4 +1,6 @@
-# React + Vite
+# Boomgator
+
+Boomgator is a comprehensive social media management platform that helps businesses automate their social media engagement and grow their audience through intelligent tools.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

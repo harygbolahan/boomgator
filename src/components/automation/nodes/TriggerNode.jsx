@@ -8,7 +8,11 @@ import {
   BellRing, 
   Mail, 
   MessageSquare,
-  ChevronRight
+  ChevronRight,
+  UserPlus,
+  Heart,
+  MessageCircle,
+  Share
 } from 'lucide-react';
 
 function TriggerNode({ data }) {
@@ -20,7 +24,11 @@ function TriggerNode({ data }) {
     'Notification': <BellRing className="w-4 h-4" />,
     'Email': <Mail className="w-4 h-4" />,
     'Message': <MessageSquare className="w-4 h-4" />,
-    'Event': <Zap className="w-4 h-4" />
+    'Event': <Zap className="w-4 h-4" />,
+    'FollowUs': <UserPlus className="w-4 h-4" />,
+    'Comment': <MessageCircle className="w-4 h-4" />,
+    'StoryReply': <Share className="w-4 h-4" />,
+    'StoryMention': <Heart className="w-4 h-4" />
   };
 
   const triggerTypeColors = {
@@ -31,7 +39,11 @@ function TriggerNode({ data }) {
     'Notification': 'bg-orange-50 border-orange-200 text-orange-700',
     'Email': 'bg-sky-50 border-sky-200 text-sky-700',
     'Message': 'bg-violet-50 border-violet-200 text-violet-700',
-    'Event': 'bg-red-50 border-red-200 text-red-700'
+    'Event': 'bg-red-50 border-red-200 text-red-700',
+    'FollowUs': 'bg-green-50 border-green-200 text-green-700',
+    'Comment': 'bg-blue-50 border-blue-200 text-blue-700',
+    'StoryReply': 'bg-purple-50 border-purple-200 text-purple-700',
+    'StoryMention': 'bg-rose-50 border-rose-200 text-rose-700'
   };
 
   const getColorClassNames = (triggerType) => {
@@ -76,6 +88,40 @@ function TriggerNode({ data }) {
           <div className="mb-2">
             <div className="text-xs text-gray-500 mb-1">Condition</div>
             <div className="text-sm font-medium">{data.condition || 'Record updated'}</div>
+          </div>
+        );
+      case 'FollowUs':
+        return (
+          <div className="mb-2">
+            <div className="text-xs text-gray-500 mb-1">Platform</div>
+            <div className="text-sm font-medium">{data.platform || 'All Platforms'}</div>
+            <div className="text-xs text-gray-500 mt-2 mb-1">Action</div>
+            <div className="text-sm font-medium">User followed account</div>
+          </div>
+        );
+      case 'Comment':
+        return (
+          <div className="mb-2">
+            <div className="text-xs text-gray-500 mb-1">Post Type</div>
+            <div className="text-sm font-medium">{data.postType || 'All Posts'}</div>
+            <div className="text-xs text-gray-500 mt-2 mb-1">Reply Strategy</div>
+            <div className="text-sm font-medium">{data.replyStrategy || 'Comment & Message'}</div>
+          </div>
+        );
+      case 'StoryReply':
+        return (
+          <div className="mb-2">
+            <div className="text-xs text-gray-500 mb-1">Keyword</div>
+            <div className="text-sm font-medium">{data.keyword || 'Any reply'}</div>
+            <div className="text-xs text-gray-500 mt-2 mb-1">Action</div>
+            <div className="text-sm font-medium">{data.action || 'Start DM conversation'}</div>
+          </div>
+        );
+      case 'StoryMention':
+        return (
+          <div className="mb-2">
+            <div className="text-xs text-gray-500 mb-1">Response</div>
+            <div className="text-sm font-medium">{data.response || 'Instant reply'}</div>
           </div>
         );
       case 'Notification':

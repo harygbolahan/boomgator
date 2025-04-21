@@ -58,7 +58,7 @@ export function DashboardPage() {
     // Mock download by creating a temporary anchor element
     const link = document.createElement('a');
     link.href = '#';
-    link.setAttribute('download', `social_dashboard_export_${new Date().toISOString().split('T')[0]}.${format}`);
+    link.setAttribute('download', `boomgator_dashboard_export_${new Date().toISOString().split('T')[0]}.${format}`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -113,42 +113,42 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Dashboard</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Dashboard</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Welcome back! Here's an overview of your social media automation.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {/* Export Data functionality */}
           <Dialog open={isExportDataOpen} onOpenChange={setIsExportDataOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50">
-                <Download size={16} className="mr-2" /> Export Data
+              <Button variant="outline" size="sm" className="text-xs sm:text-sm border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50">
+                <Download size={14} className="mr-1 sm:mr-2" /> <span className="sm:inline">Export Data</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md max-w-[calc(100vw-2rem)]">
               <DialogHeader>
-                <DialogTitle>Export Dashboard Data</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-base sm:text-lg">Export Dashboard Data</DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm">
                   Choose the format for your data export
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Button onClick={() => handleExportData('csv')} variant="outline" className="flex items-center gap-2">
-                    <Download size={16} /> CSV Format
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
+                  <Button onClick={() => handleExportData('csv')} variant="outline" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                    <Download size={14} /> CSV Format
                   </Button>
-                  <Button onClick={() => handleExportData('xlsx')} variant="outline" className="flex items-center gap-2">
-                    <Download size={16} /> Excel Format
+                  <Button onClick={() => handleExportData('xlsx')} variant="outline" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                    <Download size={14} /> Excel Format
                   </Button>
-                  <Button onClick={() => handleExportData('pdf')} variant="outline" className="flex items-center gap-2">
-                    <Download size={16} /> PDF Report
+                  <Button onClick={() => handleExportData('pdf')} variant="outline" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                    <Download size={14} /> PDF Report
                   </Button>
-                  <Button onClick={() => handleExportData('json')} variant="outline" className="flex items-center gap-2">
-                    <Download size={16} /> JSON Data
+                  <Button onClick={() => handleExportData('json')} variant="outline" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                    <Download size={14} /> JSON Data
                   </Button>
                 </div>
               </div>
@@ -161,14 +161,14 @@ export function DashboardPage() {
           {/* Add Account functionality */}
           <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
-                <Plus size={16} className="mr-2" /> Add Account
+              <Button size="sm" className="text-xs sm:text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
+                <Plus size={14} className="mr-1 sm:mr-2" /> <span className="sm:inline">Add Account</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md max-w-[calc(100vw-2rem)]">
               <DialogHeader>
-                <DialogTitle>Connect Social Media Account</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-base sm:text-lg">Connect Social Media Account</DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm">
                   Link your social media profiles to enable automation
                 </DialogDescription>
               </DialogHeader>
@@ -176,15 +176,15 @@ export function DashboardPage() {
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
                     <label htmlFor="platform" className="text-sm font-medium">Platform</label>
-                    <div className="flex gap-2">
-                      <Button type="button" variant="outline" className="flex-1 flex items-center gap-2 justify-center">
-                        <Facebook size={18} /> Facebook
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" className="flex-1 min-w-[80px] text-xs sm:text-sm flex items-center gap-1 sm:gap-2 justify-center">
+                        <Facebook size={16} /> <span className="hidden xs:inline">Facebook</span>
                       </Button>
-                      <Button type="button" variant="outline" className="flex-1 flex items-center gap-2 justify-center">
-                        <Instagram size={18} /> Instagram
+                      <Button type="button" variant="outline" className="flex-1 min-w-[80px] text-xs sm:text-sm flex items-center gap-1 sm:gap-2 justify-center">
+                        <Instagram size={16} /> <span className="hidden xs:inline">Instagram</span>
                       </Button>
-                      <Button type="button" variant="outline" className="flex-1 flex items-center gap-2 justify-center">
-                        <Twitter size={18} /> Twitter
+                      <Button type="button" variant="outline" className="flex-1 min-w-[80px] text-xs sm:text-sm flex items-center gap-1 sm:gap-2 justify-center">
+                        <Twitter size={16} /> <span className="hidden xs:inline">Twitter</span>
                       </Button>
                     </div>
                   </div>
@@ -198,8 +198,8 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsAddAccountOpen(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-gradient-to-r from-indigo-600 to-purple-600">Connect Account</Button>
+                  <Button type="button" variant="outline" size="sm" className="text-xs sm:text-sm" onClick={() => setIsAddAccountOpen(false)}>Cancel</Button>
+                  <Button type="submit" size="sm" className="text-xs sm:text-sm bg-gradient-to-r from-indigo-600 to-purple-600">Connect Account</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -208,24 +208,24 @@ export function DashboardPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {quickStats.map((stat, index) => (
           <Card key={index} className="overflow-hidden border-none shadow-md transition-all duration-200 hover:shadow-lg">
             <div className={`h-1 w-full ${stat.accentColor}`}></div>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-sm font-medium text-muted-foreground">{stat.title}</h3>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${stat.iconBg} ${stat.iconColor}`}>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex justify-between items-start mb-3 sm:mb-4">
+                <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">{stat.title}</h3>
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${stat.iconBg} ${stat.iconColor}`}>
                   {stat.icon}
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-xl sm:text-2xl font-bold">{stat.value}</p>
                 <div className="flex items-center gap-1">
                   <span className={`flex items-center gap-1 ${stat.trend === "up" ? "text-emerald-600" : "text-rose-600"}`}>
                     {stat.trend === "up" ? <ArrowUp size={14} /> : <ArrowDown size={14} />} {stat.change}
                   </span>
-                  <span className="text-sm text-muted-foreground">vs last week</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">vs last week</span>
                 </div>
               </div>
             </CardContent>
@@ -235,10 +235,10 @@ export function DashboardPage() {
 
       {/* Edit Automation Dialog */}
       <Dialog open={isEditAutomationOpen} onOpenChange={setIsEditAutomationOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="sm:max-w-xl max-w-[calc(100vw-2rem)]">
           <DialogHeader>
-            <DialogTitle>Edit Automation</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg">Edit Automation</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Make changes to your automation workflow
             </DialogDescription>
           </DialogHeader>
@@ -308,53 +308,53 @@ export function DashboardPage() {
 
       {/* Active Automations */}
       <Card className="border-none shadow-md">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-lg font-medium">Active Automations</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 sm:p-6 sm:pb-2">
+          <CardTitle className="text-base sm:text-lg font-medium">Active Automations</CardTitle>
           <Link to="/automation">
-            <Button variant="outline" size="sm" className="border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50">
+            <Button variant="outline" size="sm" className="text-xs border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50">
               View All <ExternalLink size={14} className="ml-1" />
             </Button>
           </Link>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
           <div className="overflow-auto rounded-md">
-            <table className="w-full">
+            <table className="w-full text-xs sm:text-sm">
               <thead>
                 <tr className="text-left border-b">
                   <th className="pb-3 font-medium text-muted-foreground">Name</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Type</th>
+                  <th className="pb-3 font-medium text-muted-foreground hidden sm:table-cell">Type</th>
                   <th className="pb-3 font-medium text-muted-foreground">Platform</th>
                   <th className="pb-3 font-medium text-muted-foreground">Status</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Triggers</th>
+                  <th className="pb-3 font-medium text-muted-foreground hidden sm:table-cell">Triggers</th>
                   <th className="pb-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {activeAutomations.map((automation, index) => (
                   <tr key={index} className="border-b last:border-0 hover:bg-slate-50">
-                    <td className="py-4 font-medium">{automation.name}</td>
-                    <td className="py-4">{automation.type}</td>
-                    <td className="py-4 flex items-center gap-1">
+                    <td className="py-3 sm:py-4 font-medium">{automation.name}</td>
+                    <td className="py-3 sm:py-4 hidden sm:table-cell">{automation.type}</td>
+                    <td className="py-3 sm:py-4 flex items-center gap-1">
                       {automation.platformIcons.map((icon, i) => (
                         <span key={i} className="text-slate-700">{icon}</span>
                       ))}
                     </td>
-                    <td className="py-4">
+                    <td className="py-3 sm:py-4">
                       <Badge className={automation.status === "Active" 
                         ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" 
                         : "bg-amber-100 text-amber-800 hover:bg-amber-200"}>
                         {automation.status}
                       </Badge>
                     </td>
-                    <td className="py-4">{automation.triggers}</td>
-                    <td className="py-4">
+                    <td className="py-3 sm:py-4 hidden sm:table-cell">{automation.triggers}</td>
+                    <td className="py-3 sm:py-4">
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                        className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
                         onClick={() => openEditAutomation(automation)}
                       >
-                        <Edit size={16} className="mr-1" /> Edit
+                        <Edit size={16} />
                       </Button>
                     </td>
                   </tr>
@@ -367,10 +367,10 @@ export function DashboardPage() {
 
       {/* Edit Post Dialog */}
       <Dialog open={isEditPostOpen} onOpenChange={setIsEditPostOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="sm:max-w-xl max-w-[calc(100vw-2rem)]">
           <DialogHeader>
-            <DialogTitle>Edit Scheduled Post</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg">Edit Scheduled Post</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Make changes to your upcoming post
             </DialogDescription>
           </DialogHeader>
@@ -436,37 +436,37 @@ export function DashboardPage() {
       </Dialog>
 
       {/* Two columns layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
         {/* Scheduled Posts */}
         <Card className="border-none shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-medium">Upcoming Scheduled Posts</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 sm:p-6 sm:pb-2">
+            <CardTitle className="text-base sm:text-lg font-medium">Upcoming Scheduled Posts</CardTitle>
             <Link to="/calendar">
-              <Button variant="outline" size="sm" className="border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50">
+              <Button variant="outline" size="sm" className="text-xs border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50">
                 View Calendar <Calendar size={14} className="ml-1" />
               </Button>
             </Link>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+            <div className="space-y-3 sm:space-y-4">
               {scheduledPosts.map((post, index) => (
-                <div key={index} className="flex items-start gap-4 pb-4 border-b last:border-0 hover:bg-slate-50 p-2 rounded-md transition-colors">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${post.platformBg}`}>
+                <div key={index} className="flex items-start gap-2 sm:gap-4 pb-3 sm:pb-4 border-b last:border-0 hover:bg-slate-50 p-2 rounded-md transition-colors">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${post.platformBg}`}>
                     {post.platformIcon}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-medium">{post.title}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Calendar size={14} /> {post.time}
+                        <p className="font-medium text-sm sm:text-base truncate">{post.title}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                          <Calendar size={12} className="sm:w-4 sm:h-4" /> {post.time}
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 ml-2 flex-shrink-0">
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                          className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
                           onClick={() => openEditPost(post)}
                         >
                           <Edit size={16} />
@@ -482,10 +482,10 @@ export function DashboardPage() {
 
         {/* View Engagement Dialog */}
         <Dialog open={isViewEngagementOpen} onOpenChange={setIsViewEngagementOpen}>
-          <DialogContent className="max-w-xl">
+          <DialogContent className="sm:max-w-xl max-w-[calc(100vw-2rem)]">
             <DialogHeader>
-              <DialogTitle>Engagement Details</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Engagement Details</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 View and respond to this engagement
               </DialogDescription>
             </DialogHeader>
@@ -540,28 +540,28 @@ export function DashboardPage() {
 
         {/* Recent Activity */}
         <Card className="border-none shadow-md">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Recent Engagements</CardTitle>
+          <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
+            <CardTitle className="text-base sm:text-lg font-medium">Recent Engagements</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+            <div className="space-y-3 sm:space-y-4">
               {recentEngagements.map((activity, index) => (
                 <div 
                   key={index} 
-                  className="flex items-start gap-4 pb-4 border-b last:border-0 hover:bg-slate-50 p-2 rounded-md transition-colors cursor-pointer"
+                  className="flex items-start gap-2 sm:gap-4 pb-3 sm:pb-4 border-b last:border-0 hover:bg-slate-50 p-2 rounded-md transition-colors cursor-pointer"
                   onClick={() => openEngagementDetails(activity)}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activity.platformBg}`}>
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${activity.platformBg}`}>
                     {activity.platformIcon}
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{activity.title}</p>
-                    <p className="text-sm text-slate-600">"{activity.description}"</p>
-                    <div className="flex justify-between items-center mt-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm sm:text-base truncate">{activity.title}</p>
+                    <p className="text-xs sm:text-sm text-slate-600 truncate">"{activity.description}"</p>
+                    <div className="flex justify-between items-center mt-1 sm:mt-2">
                       <span className="text-xs text-muted-foreground">{activity.time}</span>
                       {activity.hasResponse && (
-                        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200">
-                          Auto-response sent
+                        <Badge className="text-xs bg-emerald-100 text-emerald-800 hover:bg-emerald-200">
+                          Auto-response
                         </Badge>
                       )}
                     </div>

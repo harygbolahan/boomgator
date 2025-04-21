@@ -38,7 +38,7 @@ import {
   Eye
 } from "lucide-react";
 
-export function SocialDashboard() {
+export function BoomgatorDashboard() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({
@@ -181,10 +181,12 @@ export function SocialDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-            Social Media Dashboard
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500">
+              Boomgator Dashboard
+            </span>
           </h2>
           <p className="text-muted-foreground">
             Manage all your social media platforms in one place
@@ -246,12 +248,16 @@ export function SocialDashboard() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </div> */}
       
       {loading ? (
-        <div className="text-center py-8">
-          <RefreshCcw className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading your social dashboard...</p>
+        <div className="w-full h-full flex justify-center items-center py-20">
+          <div className="text-center">
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+            <p className="text-muted-foreground mt-4">Loading your Boomgator dashboard...</p>
+          </div>
         </div>
       ) : (
         <>

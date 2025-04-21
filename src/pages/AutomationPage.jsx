@@ -1,12 +1,288 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SocialMediaConnect } from "@/components/SocialMediaConnect";
 import { initFacebookSdk } from "@/lib/socialMediaAuth";
 import { AutomationFlowBuilder } from "@/components/automation/AutomationFlowBuilder";
 
+// Component for filter controls
+const FilterControls = ({ filterPlatform, filterType, filterStatus, setFilterPlatform, setFilterType, setFilterStatus }) => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/50 p-4 rounded-lg">
+    <div>
+      <label htmlFor="platform" className="block text-sm font-medium mb-1">Platform</label>
+      <select
+        id="platform"
+        className="w-full p-2 border rounded-lg bg-background"
+        value={filterPlatform}
+        onChange={(e) => setFilterPlatform(e.target.value)}
+      >
+        <option value="all">All Platforms</option>
+        <option value="facebook">Facebook</option>
+        <option value="instagram">Instagram</option>
+        <option value="twitter">Twitter</option>
+        <option value="linkedin">LinkedIn</option>
+      </select>
+    </div>
+    <div>
+      <label htmlFor="type" className="block text-sm font-medium mb-1">Type</label>
+      <select
+        id="type"
+        className="w-full p-2 border rounded-lg bg-background"
+        value={filterType}
+        onChange={(e) => setFilterType(e.target.value)}
+      >
+        <option value="all">All Types</option>
+        <option value="comment">Comment</option>
+        <option value="message">Message</option>
+        <option value="keyword">Keyword</option>
+        <option value="story">Story</option>
+      </select>
+    </div>
+    <div>
+      <label htmlFor="status" className="block text-sm font-medium mb-1">Status</label>
+      <select
+        id="status"
+        className="w-full p-2 border rounded-lg bg-background"
+        value={filterStatus}
+        onChange={(e) => setFilterStatus(e.target.value)}
+      >
+        <option value="all">All Statuses</option>
+        <option value="Active">Active</option>
+        <option value="Paused">Paused</option>
+        <option value="Draft">Draft</option>
+      </select>
+    </div>
+  </div>
+);
+
+// Component for tab navigation
+const TabNavigation = ({ activeTab, setActiveTab, tabs }) => (
+  <div className="mt-6 border-b">
+    <nav className="flex space-x-4 overflow-x-auto">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+            activeTab === tab.id
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {tab.name}
+        </button>
+      ))}
+    </nav>
+  </div>
+);
+
+// Component for automation card
+const AutomationCard = ({ automation, index, onStatusChange, onEdit, getPlatformColor }) => {
+  const handleStatusToggle = () => {
+    onStatusChange(index, automation.status === "Active" ? "Paused" : "Active");
+  };
+
+  const statusClasses = {
+    "Active": "bg-green-100 text-green-800",
+    "Paused": "bg-yellow-100 text-yellow-800",
+    "Draft": "bg-gray-100 text-gray-800"
+  };
+
+  return (
+    <div className="bg-card rounded-xl shadow-md border overflow-hidden hover:shadow-lg transition-all duration-200">
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClasses[automation.status]}`}>
+            {automation.status}
+          </span>
+          <button 
+            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-accent"
+            aria-label="More options"
+          >
+            ⋮
+          </button>
+        </div>
+        
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${automation.iconBg}`}>
+            {automation.icon}
+          </div>
+          <div>
+            <h3 className="font-medium">{automation.name}</h3>
+            <div className="flex items-center mt-1">
+              <div className={`w-3 h-3 rounded-full mr-1.5 ${getPlatformColor(automation.platform)}`}></div>
+              <p className="text-xs text-muted-foreground">{automation.platform}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-2 mb-4">
+          <p className="text-sm">
+            <span className="text-muted-foreground">Type:</span> {automation.type}
+          </p>
+          <p className="text-sm">
+            <span className="text-muted-foreground">Trigger:</span> {automation.trigger}
+          </p>
+          <p className="text-sm">
+            <span className="text-muted-foreground">Response:</span> {automation.response}
+          </p>
+        </div>
+        
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-muted-foreground">Created on {automation.created}</span>
+          <span className={automation.triggered > 0 ? "text-green-600" : "text-muted-foreground"}>
+            {automation.triggered} today
+          </span>
+        </div>
+      </div>
+      
+      <div className="border-t p-4 bg-accent/10 flex justify-between">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={handleStatusToggle}
+          className={automation.status === "Active" ? "text-yellow-600" : "text-green-600"}
+        >
+          {automation.status === "Active" ? "Pause" : "Activate"}
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => onEdit(automation, index)}
+        >
+          Edit
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Component for type card
+const AutomationTypeCard = ({ type, getBgForType, onCreateClick }) => (
+  <div className="bg-card p-6 rounded-xl shadow-md border hover:shadow-lg transition-all duration-200">
+    <div className={`w-12 h-12 rounded-full ${getBgForType(type.id)} flex items-center justify-center mb-4 text-xl`}>
+      {type.icon}
+    </div>
+    <h3 className="text-lg font-medium mb-2">{type.title}</h3>
+    <p className="text-muted-foreground mb-4 text-sm">{type.description}</p>
+    <Button 
+      variant="outline" 
+      size="sm" 
+      className="w-full hover:bg-muted"
+      onClick={() => onCreateClick(type.id)}
+    >
+      Create
+    </Button>
+  </div>
+);
+
+// Component for automation modal
+const AutomationModal = ({ showModal, setShowModal, newAutomation, setNewAutomation, handleCreateAutomation }) => {
+  if (!showModal) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-background rounded-lg p-6 w-full max-w-lg">
+        <h2 className="text-xl font-semibold mb-4">
+          {newAutomation.index !== undefined ? "Edit Automation" : "Create New Automation"}
+        </h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium mb-1">
+              Automation Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              className="w-full p-2 border rounded-lg bg-background"
+              placeholder="E.g., Comment Responder"
+              value={newAutomation.name}
+              onChange={(e) => setNewAutomation({ ...newAutomation, name: e.target.value })}
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="automation-type" className="block text-sm font-medium mb-1">
+              Automation Type
+            </label>
+            <select
+              id="automation-type"
+              className="w-full p-2 border rounded-lg bg-background"
+              value={newAutomation.type}
+              onChange={(e) => setNewAutomation({ ...newAutomation, type: e.target.value })}
+            >
+              <option value="comment">Comment Automation</option>
+              <option value="message">Message Automation</option>
+              <option value="keyword">Keyword Triggers</option>
+              <option value="story">Story Automation</option>
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="platform" className="block text-sm font-medium mb-1">
+              Platform
+            </label>
+            <select
+              id="platform"
+              className="w-full p-2 border rounded-lg bg-background"
+              value={newAutomation.platform}
+              onChange={(e) => setNewAutomation({ ...newAutomation, platform: e.target.value })}
+            >
+              <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
+              <option value="twitter">Twitter</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="All Platforms">All Platforms</option>
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="trigger" className="block text-sm font-medium mb-1">
+              Trigger
+            </label>
+            <input
+              id="trigger"
+              type="text"
+              className="w-full p-2 border rounded-lg bg-background"
+              placeholder="E.g., Comments containing 'price' or 'cost'"
+              value={newAutomation.trigger}
+              onChange={(e) => setNewAutomation({ ...newAutomation, trigger: e.target.value })}
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="response" className="block text-sm font-medium mb-1">
+              Response
+            </label>
+            <textarea
+              id="response"
+              className="w-full p-2 border rounded-lg bg-background"
+              rows={3}
+              placeholder="E.g., Thank you for your interest! Our prices start at $99..."
+              value={newAutomation.response}
+              onChange={(e) => setNewAutomation({ ...newAutomation, response: e.target.value })}
+            ></textarea>
+          </div>
+        </div>
+        
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+          <Button 
+            onClick={handleCreateAutomation}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {newAutomation.index !== undefined ? "Save Changes" : "Create Automation"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main Page Component
 export function AutomationPage() {
   const [activeTab, setActiveTab] = useState("automations");
+  const [activeSubTab, setActiveSubTab] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [newAutomation, setNewAutomation] = useState({
     name: "",
@@ -20,35 +296,40 @@ export function AutomationPage() {
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [connectedAccounts, setConnectedAccounts] = useState([]);
-  const [facebookSdkLoaded, setFacebookSdkLoaded] = useState(false);
   
-  // Initialize Facebook SDK on component mount
+  // Initialize Facebook SDK
   useEffect(() => {
-    initFacebookSdk()
-      .then(() => setFacebookSdkLoaded(true))
-      .catch(error => console.error("Failed to initialize Facebook SDK:", error));
+    initFacebookSdk().catch(error => console.error("Failed to initialize Facebook SDK:", error));
   }, []);
   
+  // Handle automation creation and editing
   const handleCreateAutomation = () => {
-    // Validate form
-    if (!newAutomation.name || !newAutomation.trigger || !newAutomation.response) {
-      return; // Show validation error in a real app
+    if (!newAutomation.name || !newAutomation.trigger || !newAutomation.response) return;
+    
+    if (newAutomation.index !== undefined) {
+      // Edit existing automation
+      const updatedList = [...automationsList];
+      updatedList[newAutomation.index] = {
+        ...newAutomation,
+        icon: getIconForType(newAutomation.type),
+        iconBg: getBgForType(newAutomation.type),
+        index: undefined
+      };
+      setAutomationsList(updatedList);
+    } else {
+      // Create new automation
+      const newItem = {
+        ...newAutomation,
+        status: "Active",
+        icon: getIconForType(newAutomation.type),
+        iconBg: getBgForType(newAutomation.type),
+        created: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        triggered: 0
+      };
+      setAutomationsList([newItem, ...automationsList]);
     }
     
-    // Create new automation
-    const newItem = {
-      ...newAutomation,
-      status: "Active",
-      icon: getIconForType(newAutomation.type),
-      iconBg: getBgForType(newAutomation.type),
-      created: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      triggered: 0
-    };
-    
-    // Add to list
-    setAutomationsList([newItem, ...automationsList]);
-    
-    // Close modal and reset form
+    // Reset form
     setShowModal(false);
     setNewAutomation({
       name: "",
@@ -59,12 +340,14 @@ export function AutomationPage() {
     });
   };
   
+  // Handle automation status change
   const handleStatusChange = (index, newStatus) => {
     const updatedAutomations = [...automationsList];
     updatedAutomations[index].status = newStatus;
     setAutomationsList(updatedAutomations);
   };
 
+  // Handle edit automation
   const handleEditAutomation = (automation, index) => {
     setNewAutomation({
       ...automation,
@@ -73,12 +356,18 @@ export function AutomationPage() {
     setShowModal(true);
   };
   
-  const handleAccountConnected = (accounts) => {
-    setConnectedAccounts(accounts);
+  // Handle creating automation from type card
+  const handleCreateFromType = (typeId) => {
+    setNewAutomation({
+      ...newAutomation,
+      type: typeId
+    });
+    setShowModal(true);
   };
   
+  // Filter automations based on criteria
   const filteredAutomations = automationsList.filter(automation => {
-    const matchesTab = activeTab === "all" || automation.type.toLowerCase() === activeTab;
+    const matchesTab = activeSubTab === "all" || automation.type.toLowerCase() === activeSubTab;
     const matchesPlatform = filterPlatform === "all" || automation.platform.toLowerCase().includes(filterPlatform);
     const matchesType = filterType === "all" || automation.type.toLowerCase() === filterType;
     const matchesStatus = filterStatus === "all" || automation.status === filterStatus;
@@ -86,6 +375,7 @@ export function AutomationPage() {
     return matchesTab && matchesPlatform && matchesType && matchesStatus;
   });
   
+  // Utility functions for icons and colors
   const getIconForType = (type) => {
     switch(type.toLowerCase()) {
       case "comment": return "💬";
@@ -117,203 +407,78 @@ export function AutomationPage() {
     }
   };
   
+  // Main navigation tabs
+  const mainTabs = [
+    { id: "automations", name: "Automations" },
+    { id: "flow-builder", name: "Flow Builder" },
+    { id: "accounts", name: "Connected Accounts" }
+  ];
+  
+  // Subtabs for automation types
+  const subTabs = [
+    { id: "all", name: "All Automations" },
+    { id: "comment", name: "Comment Automations" },
+    { id: "message", name: "Message Automations" },
+    { id: "keyword", name: "Keyword Triggers" },
+    { id: "story", name: "Story Automations" }
+  ];
+  
+  // Render automation list tab content
+  const renderAutomationsTab = () => (
+    <div className="space-y-6">
+      <TabNavigation 
+        activeTab={activeSubTab} 
+        setActiveTab={setActiveSubTab}
+        tabs={subTabs}
+      />
+      
+      <FilterControls
+        filterPlatform={filterPlatform}
+        filterType={filterType}
+        filterStatus={filterStatus}
+        setFilterPlatform={setFilterPlatform}
+        setFilterType={setFilterType}
+        setFilterStatus={setFilterStatus}
+      />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredAutomations.map((automation, index) => (
+          <AutomationCard
+            key={index}
+            automation={automation}
+            index={index}
+            onStatusChange={handleStatusChange}
+            onEdit={handleEditAutomation}
+            getPlatformColor={getPlatformColor}
+          />
+        ))}
+      </div>
+      
+      <div className="pt-8">
+        <h3 className="text-xl font-semibold mb-6">Automation Types</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {automationTypes.map((type, index) => (
+            <AutomationTypeCard
+              key={index}
+              type={type}
+              getBgForType={getBgForType}
+              onCreateClick={handleCreateFromType}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+  
+  // Render tab content based on active tab
   const renderTabContent = () => {
     switch (activeTab) {
       case "automations":
-        return (
-          <div className="space-y-6">
-            {/* Tab navigation for automation types */}
-            <div className="mt-6 border-b">
-              <nav className="flex space-x-4">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                      activeTab === tab.id
-                        ? "border-primary text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {tab.name}
-                  </button>
-                ))}
-              </nav>
-            </div>
-            
-            {/* Automation filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/50 p-4 rounded-lg">
-              <div>
-                <label htmlFor="platform" className="block text-sm font-medium mb-1">
-                  Platform
-                </label>
-                <select
-                  id="platform"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  value={filterPlatform}
-                  onChange={(e) => setFilterPlatform(e.target.value)}
-                >
-                  <option value="all">All Platforms</option>
-                  <option value="facebook">Facebook</option>
-                  <option value="instagram">Instagram</option>
-                  <option value="twitter">Twitter</option>
-                  <option value="linkedin">LinkedIn</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="type" className="block text-sm font-medium mb-1">
-                  Type
-                </label>
-                <select
-                  id="type"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                >
-                  <option value="all">All Types</option>
-                  <option value="comment">Comment</option>
-                  <option value="message">Message</option>
-                  <option value="keyword">Keyword</option>
-                  <option value="story">Story</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="status" className="block text-sm font-medium mb-1">
-                  Status
-                </label>
-                <select
-                  id="status"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="Active">Active</option>
-                  <option value="Paused">Paused</option>
-                  <option value="Draft">Draft</option>
-                </select>
-              </div>
-            </div>
-            
-            {/* Automation cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredAutomations.map((automation, index) => (
-                <div key={index} className="bg-card rounded-xl shadow-md border overflow-hidden hover:shadow-lg transition-all duration-200">
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          automation.status === "Active" 
-                            ? "bg-green-100 text-green-800" 
-                            : automation.status === "Paused"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
-                        }`}>
-                          {automation.status}
-                        </span>
-                      </div>
-                      <div className="flex gap-1">
-                        <button className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-accent">
-                          ⋮
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${automation.iconBg}`}>
-                        {automation.icon}
-                      </div>
-                      <div>
-                        <h3 className="font-medium">{automation.name}</h3>
-                        <div className="flex items-center mt-1">
-                          <div className={`w-3 h-3 rounded-full mr-1.5 ${getPlatformColor(automation.platform)}`}></div>
-                          <p className="text-xs text-muted-foreground">{automation.platform}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">Type:</span> {automation.type}
-                      </p>
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">Trigger:</span> {automation.trigger}
-                      </p>
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">Response:</span> {automation.response}
-                      </p>
-                    </div>
-                    
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Created on {automation.created}</span>
-                      <div className="flex items-center gap-1">
-                        <span className={automation.triggered > 0 ? "text-green-600" : "text-muted-foreground"}>
-                          {automation.triggered} today
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="border-t p-4 bg-accent/10 flex justify-between">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleStatusChange(index, automation.status === "Active" ? "Paused" : "Active")}
-                      className={automation.status === "Active" ? "text-yellow-600" : "text-green-600"}
-                    >
-                      {automation.status === "Active" ? "Pause" : "Activate"}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleEditAutomation(automation, index)}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Automation Types Section */}
-            <div className="pt-8">
-              <h3 className="text-xl font-semibold mb-6">Automation Types</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {automationTypes.map((type, index) => (
-                  <div 
-                    key={index} 
-                    className="bg-card p-6 rounded-xl shadow-md border hover:shadow-lg transition-all duration-200"
-                  >
-                    <div className={`w-12 h-12 rounded-full ${getBgForType(type.id)} flex items-center justify-center mb-4 text-xl`}>
-                      {type.icon}
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">{type.title}</h3>
-                    <p className="text-muted-foreground mb-4 text-sm">{type.description}</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100"
-                      onClick={() => {
-                        setNewAutomation({
-                          ...newAutomation,
-                          type: type.id
-                        });
-                        setShowModal(true);
-                      }}
-                    >
-                      Create
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
+        return renderAutomationsTab();
       case "flow-builder":
         return (
           <AutomationFlowBuilder 
             onSave={(automationFlow) => {
-              // Add the new automation to the list
               const newItem = {
                 name: automationFlow.name,
                 type: automationFlow.type || "Custom",
@@ -326,15 +491,12 @@ export function AutomationPage() {
                 created: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 triggered: 0
               };
-              
               setAutomationsList([newItem, ...automationsList]);
             }}
           />
         );
       case "accounts":
-        return (
-          <SocialMediaConnect onAccountConnected={handleAccountConnected} />
-        );
+        return <SocialMediaConnect onAccountConnected={setConnectedAccounts} />;
       default:
         return null;
     }
@@ -342,6 +504,7 @@ export function AutomationPage() {
   
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Automation Center</h2>
@@ -351,151 +514,44 @@ export function AutomationPage() {
         </div>
         <Button 
           onClick={() => setShowModal(true)}
-          className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 transition-all duration-200"
+          className="bg-primary hover:bg-primary/90"
         >
           Create Automation
         </Button>
       </div>
       
+      {/* Main tabs navigation */}
       <div className="mt-6">
         <div className="border-b mb-4">
           <div className="flex space-x-2">
-            <button
-              className={`px-4 py-2 text-sm font-medium ${activeTab === 'automations' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground'}`}
-              onClick={() => setActiveTab('automations')}
-            >
-              Automations
-            </button>
-            <button
-              className={`px-4 py-2 text-sm font-medium ${activeTab === 'flow-builder' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground'}`}
-              onClick={() => setActiveTab('flow-builder')}
-            >
-              Flow Builder
-            </button>
-            <button
-              className={`px-4 py-2 text-sm font-medium ${activeTab === 'accounts' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground'}`}
-              onClick={() => setActiveTab('accounts')}
-            >
-              Connected Accounts
-            </button>
+            {mainTabs.map(tab => (
+              <button
+                key={tab.id}
+                className={`px-4 py-2 text-sm font-medium ${activeTab === tab.id ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground'}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.name}
+              </button>
+            ))}
           </div>
         </div>
         
         {renderTabContent()}
       </div>
       
-      {/* Create Automation Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-6 w-full max-w-lg">
-            <h2 className="text-xl font-semibold mb-4">
-              {newAutomation.index !== undefined ? "Edit Automation" : "Create New Automation"}
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium mb-1">
-                  Automation Name
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  placeholder="E.g., Comment Responder"
-                  value={newAutomation.name}
-                  onChange={(e) => setNewAutomation({ ...newAutomation, name: e.target.value })}
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="automation-type" className="block text-sm font-medium mb-1">
-                  Automation Type
-                </label>
-                <select
-                  id="automation-type"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  value={newAutomation.type}
-                  onChange={(e) => setNewAutomation({ ...newAutomation, type: e.target.value })}
-                >
-                  <option value="comment">Comment Automation</option>
-                  <option value="message">Message Automation</option>
-                  <option value="keyword">Keyword Triggers</option>
-                  <option value="story">Story Automation</option>
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="platform" className="block text-sm font-medium mb-1">
-                  Platform
-                </label>
-                <select
-                  id="platform"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  value={newAutomation.platform}
-                  onChange={(e) => setNewAutomation({ ...newAutomation, platform: e.target.value })}
-                >
-                  <option value="facebook">Facebook</option>
-                  <option value="instagram">Instagram</option>
-                  <option value="twitter">Twitter</option>
-                  <option value="linkedin">LinkedIn</option>
-                  <option value="All Platforms">All Platforms</option>
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="trigger" className="block text-sm font-medium mb-1">
-                  Trigger
-                </label>
-                <input
-                  id="trigger"
-                  type="text"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  placeholder="E.g., Comments containing 'price' or 'cost'"
-                  value={newAutomation.trigger}
-                  onChange={(e) => setNewAutomation({ ...newAutomation, trigger: e.target.value })}
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="response" className="block text-sm font-medium mb-1">
-                  Response
-                </label>
-                <textarea
-                  id="response"
-                  className="w-full p-2 border rounded-lg bg-background"
-                  rows={3}
-                  placeholder="E.g., Thank you for your interest! Our prices start at $99..."
-                  value={newAutomation.response}
-                  onChange={(e) => setNewAutomation({ ...newAutomation, response: e.target.value })}
-                ></textarea>
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button 
-                onClick={handleCreateAutomation}
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
-              >
-                {newAutomation.index !== undefined ? "Save Changes" : "Create Automation"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal for creating/editing automations */}
+      <AutomationModal
+        showModal={showModal}
+        setShowModal={setShowModal}
+        newAutomation={newAutomation}
+        setNewAutomation={setNewAutomation}
+        handleCreateAutomation={handleCreateAutomation}
+      />
     </div>
   );
 }
 
 // Sample data
-const tabs = [
-  { id: "all", name: "All Automations" },
-  { id: "comment", name: "Comment Automations" },
-  { id: "message", name: "Message Automations" },
-  { id: "keyword", name: "Keyword Triggers" },
-  { id: "story", name: "Story Automations" }
-];
-
 const automations = [
   {
     name: "Comment Responder",

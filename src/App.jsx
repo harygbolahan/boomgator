@@ -11,6 +11,13 @@ import { IntegrationsPage } from "@/pages/IntegrationsPage"
 import { AccountPage } from "@/pages/AccountPage"
 import { SupportPage } from "@/pages/SupportPage"
 import { SocialHubPage } from "@/pages/SocialHubPage"
+import { SetupGuidePage } from "@/pages/SetupGuidePage"
+import { InstagramViralFinderPage } from "@/pages/InstagramViralFinder"
+import { MessengerBroadcastPage } from "@/pages/MessengerBroadcastPage"
+import { WhatsAppBotPage } from "@/pages/WhatsAppBotPage"
+import { PaymentPlansPage } from "@/pages/PaymentPlansPage"
+import { NotificationsPage } from "@/pages/NotificationsPage"
+import { NotFoundPage } from "@/pages/NotFoundPage"
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -33,6 +40,13 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         
+        {/* Setup Guide Route */}
+        <Route path="/setup-guide" element={
+          <ProtectedRoute>
+            <SetupGuidePage />
+          </ProtectedRoute>
+        } />
+        
         {/* Protected routes */}
         <Route element={
           <ProtectedRoute>
@@ -45,12 +59,21 @@ function App() {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
           <Route path="/social-hub" element={<SocialHubPage />} />
+          <Route path="/instagram-viral-finder" element={<InstagramViralFinderPage />} />
+          <Route path="/messenger-broadcast" element={<MessengerBroadcastPage />} />
+          <Route path="/whatsapp-bot" element={<WhatsAppBotPage />} />
+          <Route path="/payment-plans" element={<PaymentPlansPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/support" element={<SupportPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
         </Route>
         
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* 404 Not Found */}
+        <Route path="*" element={
+          <ProtectedRoute>
+            <NotFoundPage />
+          </ProtectedRoute>
+        } />
       </Routes>
     </BrowserRouter>
   )

@@ -14,7 +14,15 @@ import {
   CheckCircle2, 
   Bell, 
   Play, 
-  ChevronRight 
+  ChevronRight,
+  MessageCircle,
+  Save,
+  Share,
+  Image,
+  Link,
+  Bot,
+  Users,
+  CreditCard
 } from 'lucide-react';
 
 function ActionNode({ data }) {
@@ -31,7 +39,16 @@ function ActionNode({ data }) {
     'CreateTask': <ListTodo className="w-4 h-4" />,
     'GenerateDocument': <FileText className="w-4 h-4" />,
     'MarkComplete': <CheckCircle2 className="w-4 h-4" />,
-    'ExecuteProcess': <Play className="w-4 h-4" />
+    'ExecuteProcess': <Play className="w-4 h-4" />,
+    'ReplyToComment': <MessageCircle className="w-4 h-4" />,
+    'SendPrivateMessage': <MessageSquare className="w-4 h-4" />,
+    'CollectUserData': <Save className="w-4 h-4" />,
+    'PostContent': <Share className="w-4 h-4" />,
+    'SendImageReply': <Image className="w-4 h-4" />,
+    'SendLinkReply': <Link className="w-4 h-4" />,
+    'StartWhatsAppBot': <Bot className="w-4 h-4" />,
+    'BroadcastToUsers': <Users className="w-4 h-4" />,
+    'ProcessPayment': <CreditCard className="w-4 h-4" />
   };
 
   const actionTypeColors = {
@@ -47,7 +64,16 @@ function ActionNode({ data }) {
     'CreateTask': 'bg-lime-50 border-lime-200 text-lime-700',
     'GenerateDocument': 'bg-orange-50 border-orange-200 text-orange-700',
     'MarkComplete': 'bg-green-50 border-green-200 text-green-700',
-    'ExecuteProcess': 'bg-violet-50 border-violet-200 text-violet-700'
+    'ExecuteProcess': 'bg-violet-50 border-violet-200 text-violet-700',
+    'ReplyToComment': 'bg-blue-50 border-blue-200 text-blue-700',
+    'SendPrivateMessage': 'bg-violet-50 border-violet-200 text-violet-700',
+    'CollectUserData': 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    'PostContent': 'bg-rose-50 border-rose-200 text-rose-700',
+    'SendImageReply': 'bg-pink-50 border-pink-200 text-pink-700',
+    'SendLinkReply': 'bg-sky-50 border-sky-200 text-sky-700',
+    'StartWhatsAppBot': 'bg-green-50 border-green-200 text-green-700',
+    'BroadcastToUsers': 'bg-indigo-50 border-indigo-200 text-indigo-700',
+    'ProcessPayment': 'bg-amber-50 border-amber-200 text-amber-700'
   };
 
   const getColorClassNames = (actionType) => {
@@ -95,6 +121,100 @@ function ActionNode({ data }) {
     ));
   };
 
+  const renderActionTypeSpecificContent = () => {
+    if (!data.actionType) return null;
+
+    switch (data.actionType) {
+      case 'ReplyToComment':
+        return (
+          <div className="mt-2">
+            <div className="text-xs text-gray-500 mb-1">Reply Template</div>
+            <div className="text-sm p-1.5 bg-muted/50 rounded">
+              {data.replyTemplate || "Thanks for your comment! We appreciate your feedback."}
+            </div>
+            {data.useDynamicValues && (
+              <div className="mt-2">
+                <div className="text-xs text-gray-500 mb-1">Dynamic Values</div>
+                <div className="flex flex-wrap gap-1">
+                  {['{{user_name}}', '{{comment_text}}', '{{post_title}}'].map((tag, i) => (
+                    <span key={i} className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'SendPrivateMessage':
+        return (
+          <div className="mt-2">
+            <div className="text-xs text-gray-500 mb-1">Message Template</div>
+            <div className="text-sm p-1.5 bg-muted/50 rounded">
+              {data.messageTemplate || "Hi there! Thanks for engaging with our content."}
+            </div>
+            {data.includeButtons && (
+              <div className="mt-2">
+                <div className="text-xs text-gray-500 mb-1">Buttons</div>
+                <div className="flex flex-wrap gap-1">
+                  {(data.buttons || [{text: 'Visit Website', url: 'https://example.com'}]).map((btn, i) => (
+                    <span key={i} className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                      {btn.text}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'CollectUserData':
+        return (
+          <div className="mt-2">
+            <div className="text-xs text-gray-500 mb-1">Data to Collect</div>
+            <div className="flex flex-wrap gap-1">
+              {(data.dataFields || ['Name', 'Email']).map((field, i) => (
+                <span key={i} className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                  {field}
+                </span>
+              ))}
+            </div>
+            {data.apiEndpoint && (
+              <div className="mt-2 text-xs">
+                <span className="text-gray-500">API Endpoint:</span> {data.apiEndpoint}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'ProcessPayment':
+        return (
+          <div className="mt-2">
+            <div className="text-xs text-gray-500 mb-1">Payment Provider</div>
+            <div className="text-sm font-medium">{data.provider || 'Stripe'}</div>
+            {data.isRecurring && (
+              <div className="mt-1">
+                <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded">
+                  Recurring Payment
+                </span>
+              </div>
+            )}
+            {data.amount && (
+              <div className="mt-1 text-xs">
+                <span className="text-gray-500">Amount:</span> {data.amount}
+              </div>
+            )}
+          </div>
+        );
+        
+      // Add more cases as needed for other action types
+      
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className={`bg-white shadow-md rounded-lg border ${getBorderClass(data.actionType)} w-64`}>
       <div className={`p-2 rounded-t-lg ${getColorClassNames(data.actionType)} flex items-center`}>
@@ -133,8 +253,10 @@ function ActionNode({ data }) {
           </div>
         )}
         
+        {renderActionTypeSpecificContent()}
+        
         {data.parameters && Object.keys(data.parameters).length > 0 && (
-          <div>
+          <div className="mt-3">
             <div className="text-xs text-gray-500 mb-1.5">Parameters</div>
             {renderParameters()}
           </div>
