@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { 
   Zap, 
@@ -12,10 +13,11 @@ import {
   UserPlus,
   Heart,
   MessageCircle,
-  Share
+  Share,
+  X
 } from 'lucide-react';
 
-function TriggerNode({ data }) {
+function TriggerNode({ data, id }) {
   const triggerTypeIcons = {
     'Webhook': <Webhook className="w-4 h-4" />,
     'Schedule': <Clock className="w-4 h-4" />,
@@ -45,6 +47,16 @@ function TriggerNode({ data }) {
     'StoryReply': 'bg-purple-50 border-purple-200 text-purple-700',
     'StoryMention': 'bg-rose-50 border-rose-200 text-rose-700'
   };
+
+  const platformColors = {
+    'Facebook': 'bg-blue-500',
+    'Instagram': 'bg-gradient-to-r from-purple-500 to-pink-500',
+    'Twitter': 'bg-sky-500',
+    'LinkedIn': 'bg-blue-700',
+    'All Platforms': 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500',
+  };
+
+  const platformColor = platformColors[data.platform] || platformColors['All Platforms'];
 
   const getColorClassNames = (triggerType) => {
     return triggerTypeColors[triggerType] || 'bg-gray-50 border-gray-200 text-gray-700';
@@ -139,44 +151,65 @@ function TriggerNode({ data }) {
     }
   };
 
+  const handleDelete = () => {
+    if (data.onDelete) {
+      data.onDelete(id);
+    }
+  };
+
   return (
-    <div className={`bg-white shadow-md rounded-lg border ${getBorderClass(data.triggerType)} w-60`}>
-      <div className={`px-3 py-2.5 rounded-t-lg ${getColorClassNames(data.triggerType)} flex items-center`}>
-        <div className="p-1.5 bg-white rounded-full mr-2 border border-current shadow-sm">
-          {triggerTypeIcons[data.triggerType] || <Zap className="w-4 h-4" />}
+    <div className="relative rounded-lg shadow-md bg-white border-2 border-blue-200 min-w-[180px] max-w-[250px]">
+      {/* Delete button */}
+      <button
+        className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-sm border border-gray-200 hover:bg-red-50 transition-colors"
+        onClick={handleDelete}
+      >
+        <X className="h-3 w-3 text-gray-500 hover:text-red-500" />
+      </button>
+      
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-3 py-2 rounded-t-lg border-b border-blue-100 flex items-center gap-2">
+        <div className="bg-blue-100 p-1.5 rounded-md">
+          <Zap className="h-4 w-4 text-blue-600" />
         </div>
-        <span className="font-medium">{data.label || 'Trigger'}</span>
+        <div className="font-medium text-sm text-blue-800 truncate">
+          {data.label || 'Trigger'}
+        </div>
       </div>
       
-      <div className="p-3">
-        <div className="mb-3">
-          <div className="text-xs text-gray-500 mb-1">Trigger Type</div>
-          <div className="text-sm font-medium">{data.triggerType || 'Webhook'}</div>
+      {/* Body */}
+      <div className="px-3 py-2 text-xs">
+        {/* Platform indicator */}
+        <div className="flex items-center mb-2">
+          <span className="text-gray-600 mr-2">Platform:</span>
+          <div className="flex items-center gap-1.5">
+            <div className={`h-2.5 w-2.5 rounded-full ${platformColor}`}></div>
+            <span className="text-gray-800">{data.platform}</span>
+          </div>
         </div>
         
+        {/* Type indicator */}
+        <div className="mb-2">
+          <span className="text-gray-600 mr-2">Type:</span>
+          <span className="text-gray-800">{data.triggerType}</span>
+        </div>
+        
+        {/* Description */}
         {data.description && (
-          <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">Description</div>
-            <div className="text-sm">{data.description}</div>
+          <div className="bg-gray-50 p-1.5 rounded border border-gray-100 text-gray-700 mt-1">
+            {data.description}
           </div>
         )}
-
-        {renderTriggerDetails()}
       </div>
       
-      {/* Handle for output only */}
+      {/* Source handle at the bottom (output) */}
       <Handle
         type="source"
         position={Position.Bottom}
-        className={`w-3 h-3 bg-white border-2 ${getBorderClass(data.triggerType)}`}
+        className="w-3 h-3 bg-blue-500"
       />
-      
-      {/* Visual indicator for connection */}
-      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rounded-full bg-white p-1">
-        <ChevronRight className={`w-3 h-3 ${triggerTypeColors[data.triggerType]?.split(' ').find(cls => cls.startsWith('text-')) || 'text-gray-700'}`} />
-      </div>
     </div>
   );
 }
 
-export default TriggerNode;
+export default memo(TriggerNode);

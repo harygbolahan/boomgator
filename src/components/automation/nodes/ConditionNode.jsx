@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import {
   Check,
@@ -15,7 +16,13 @@ import {
   CalendarCheck
 } from 'lucide-react';
 
-function ConditionNode({ data }) {
+function ConditionNode({ data, id }) {
+  const handleDelete = () => {
+    if (data.onDelete) {
+      data.onDelete(id);
+    }
+  };
+
   const conditionTypeIcons = {
     'IfElse': <SplitSquareVertical className="w-4 h-4" />,
     'Filter': <Filter className="w-4 h-4" />,
@@ -84,91 +91,87 @@ function ConditionNode({ data }) {
     );
   };
 
+  // Helper function to get human-readable condition text
+  const getConditionText = () => {
+    const field = data.field || 'message';
+    const type = data.conditionType || 'contains';
+    const value = data.value || '';
+    
+    const typeMap = {
+      'contains': 'contains',
+      'equals': 'equals',
+      'startsWith': 'starts with',
+      'endsWith': 'ends with',
+      'regex': 'matches pattern'
+    };
+    
+    return `${field} ${typeMap[type]} "${value}"`;
+  };
+
   return (
-    <div className={`bg-white shadow-md rounded-lg border ${getBorderClass(data.conditionType)} w-64`}>
-      <div className={`p-2 rounded-t-lg ${getColorClassNames(data.conditionType)} flex items-center`}>
-        <div className="p-1.5 bg-white rounded-full mr-2 border border-current shadow-sm">
-          {conditionTypeIcons[data.conditionType] || <SplitSquareVertical className="w-4 h-4" />}
+    <div className="relative rounded-lg shadow-md bg-white border-2 border-amber-200 min-w-[180px] max-w-[250px]">
+      {/* Delete button */}
+      <button
+        className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-sm border border-gray-200 hover:bg-red-50 transition-colors"
+        onClick={handleDelete}
+      >
+        <X className="h-3 w-3 text-gray-500 hover:text-red-500" />
+      </button>
+      
+      {/* Header */}
+      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 px-3 py-2 rounded-t-lg border-b border-amber-100 flex items-center gap-2">
+        <div className="bg-amber-100 p-1.5 rounded-md">
+          {conditionTypeIcons[data.conditionType] || <Filter className="h-4 w-4 text-amber-600" />}
         </div>
-        <span className="font-medium text-sm">{data.label || 'Condition'}</span>
+        <div className="font-medium text-sm text-amber-800 truncate">
+          {data.label || 'Condition'}
+        </div>
       </div>
       
-      <div className="p-3">
-        <div className="mb-3">
-          <div className="text-xs text-gray-500 mb-1">Condition Type</div>
-          <div className="text-sm font-medium">
-            {data.conditionType || 'Custom Condition'}
-          </div>
+      {/* Body */}
+      <div className="px-3 py-2 text-xs">
+        {/* Condition details */}
+        <div className="bg-amber-50/50 p-1.5 rounded border border-amber-100 text-amber-700 mb-2">
+          {getConditionText()}
         </div>
         
+        {/* Description */}
         {data.description && (
-          <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">Description</div>
-            <div className="text-sm text-gray-700">{data.description}</div>
-          </div>
-        )}
-
-        {data.conditions && data.conditions.length > 0 && (
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="text-xs text-gray-500">Conditions</div>
-              {data.conditions.length > 1 && renderOperator()}
-            </div>
-            {renderConditions()}
-          </div>
-        )}
-
-        {data.customLogic && (
-          <div>
-            <div className="text-xs text-gray-500 mb-1.5">Custom Logic</div>
-            <div className="text-xs font-mono bg-gray-50 p-1.5 rounded border border-gray-200">
-              {data.customLogic}
-            </div>
+          <div className="bg-gray-50 p-1.5 rounded border border-gray-100 text-gray-700">
+            {data.description}
           </div>
         )}
       </div>
       
-      {/* Handle for input */}
+      {/* Handles for input (top) and output (bottom) */}
       <Handle
         type="target"
         position={Position.Top}
-        className={`w-3 h-3 bg-white border-2 ${getBorderClass(data.conditionType)}`}
+        className="w-3 h-3 bg-amber-500"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="w-3 h-3 bg-amber-500"
+        id="true"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-3 h-3 bg-amber-500"
+        id="false"
+        style={{ top: '50%', right: '-8px' }}
       />
       
-      {/* Handle for "true" output */}
-      <div className="absolute -right-3 top-1/3 flex items-center">
-        <div className="mr-6 flex items-center text-xs text-green-600 font-medium">
-          <Check className="w-3 h-3 mr-1" />
-          <span>True</span>
-        </div>
-        <Handle
-          id="true"
-          type="source"
-          position={Position.Right}
-          className="w-3 h-3 bg-white border-2 border-green-500"
-        />
+      {/* Labels for the handles */}
+      <div className="absolute bottom-[-20px] left-1/2 transform -translate-x-1/2 text-[10px] text-amber-600 font-medium">
+        Yes
       </div>
-      
-      {/* Handle for "false" output */}
-      <div className="absolute -right-3 bottom-1/3 flex items-center">
-        <div className="mr-6 flex items-center text-xs text-red-600 font-medium">
-          <X className="w-3 h-3 mr-1" />
-          <span>False</span>
-        </div>
-        <Handle
-          id="false"
-          type="source"
-          position={Position.Right}
-          className="w-3 h-3 bg-white border-2 border-red-500"
-        />
-      </div>
-      
-      {/* Visual indicator for the input */}
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full bg-white p-1">
-        <ChevronRight className={`w-3 h-3 rotate-90 ${conditionTypeColors[data.conditionType]?.split(' ').find(cls => cls.startsWith('text-')) || 'text-gray-700'}`} />
+      <div className="absolute right-[-20px] top-1/2 transform -translate-y-1/2 text-[10px] text-amber-600 font-medium">
+        No
       </div>
     </div>
   );
 }
 
-export default ConditionNode; 
+export default memo(ConditionNode); 

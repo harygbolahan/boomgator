@@ -4,6 +4,7 @@ const SelectContext = React.createContext(null);
 
 const Select = React.forwardRef(({ children, value, defaultValue, onValueChange, disabled, ...props }, ref) => {
   const [selectedValue, setSelectedValue] = React.useState(value || defaultValue || "");
+  const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (value !== undefined) {
@@ -14,14 +15,21 @@ const Select = React.forwardRef(({ children, value, defaultValue, onValueChange,
   const handleValueChange = React.useCallback((newValue) => {
     setSelectedValue(newValue);
     onValueChange?.(newValue);
+    setOpen(false);
   }, [onValueChange]);
+
+  const handleToggle = React.useCallback((isOpen) => {
+    setOpen(isOpen);
+  }, []);
 
   return (
     <SelectContext.Provider 
       value={{ 
         value: selectedValue, 
         onValueChange: handleValueChange,
-        disabled
+        disabled,
+        open,
+        onToggle: handleToggle
       }}
     >
       <div ref={ref} {...props}>
@@ -45,6 +53,8 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
       className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className || ""}`}
       disabled={context.disabled}
       onClick={() => context.onToggle?.(!context.open)}
+      aria-expanded={context.open}
+      aria-label="Select option"
       {...props}
     >
       {children || <SelectValue />}
@@ -58,7 +68,7 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
         strokeWidth="2" 
         strokeLinecap="round" 
         strokeLinejoin="round" 
-        className="ml-2 h-4 w-4 opacity-50"
+        className={`ml-2 h-4 w-4 opacity-50 transition-transform ${context.open ? 'rotate-180' : ''}`}
       >
         <path d="m6 9 6 6 6-6"/>
       </svg>
@@ -91,13 +101,12 @@ const SelectContent = React.forwardRef(({ className, children, ...props }, ref) 
     throw new Error("SelectContent must be used within a Select");
   }
 
-  // For simplicity, we'll just show this when people click the trigger
-  // In a real implementation, this would use a proper popover or dropdown menu
-  // and would be positioned correctly
+  if (!context.open) return null;
+
   return (
     <div
       ref={ref}
-      className={`relative z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80 ${className || ""}`}
+      className={`absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80 ${className || ""}`}
       {...props}
     >
       <div className="w-full p-1">
@@ -119,10 +128,21 @@ const SelectItem = React.forwardRef(({ className, children, value, ...props }, r
   return (
     <div
       ref={ref}
-      className={`relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ${isSelected ? "bg-accent" : ""} ${className || ""}`}
+      className={`relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground ${isSelected ? "bg-accent" : ""} ${className || ""}`}
       onClick={() => {
         if (!props.disabled) {
           context.onValueChange(value);
+        }
+      }}
+      tabIndex="0"
+      role="option"
+      aria-selected={isSelected}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (!props.disabled) {
+            context.onValueChange(value);
+          }
         }
       }}
       {...props}

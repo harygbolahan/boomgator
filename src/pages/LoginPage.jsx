@@ -183,7 +183,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex justify-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center">
       {/* Form */}
       <div className="flex flex-col justify-center items-center p-4 sm:p-8 w-full max-w-md">
         <div className="w-full">
@@ -325,24 +325,6 @@ export function LoginPage() {
               Sign up
             </Link>
           </p>
-        </div>
-      </div>
-      
-      {/* Image section */}
-      <div className="hidden lg:block relative w-0 flex-1">
-        <img
-          className="absolute inset-0 h-full w-full object-cover"
-          src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"
-          alt="People working on laptops"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/80 to-purple-900/50 mix-blend-multiply" />
-        <div className="absolute inset-0 flex flex-col justify-center p-12">
-          <div className="max-w-2xl">
-            <h2 className="text-4xl font-bold text-white">Manage your social media presence easily</h2>
-            <p className="mt-4 text-lg text-indigo-100">
-              Boomgator helps you schedule posts, respond to comments, and analyze your performance across all platforms in one place.
-            </p>
-          </div>
         </div>
       </div>
     </div>

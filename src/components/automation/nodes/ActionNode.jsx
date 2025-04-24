@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { 
   Send, 
@@ -22,10 +23,19 @@ import {
   Link,
   Bot,
   Users,
-  CreditCard
+  CreditCard,
+  X,
+  Tag,
+  Globe
 } from 'lucide-react';
 
-function ActionNode({ data }) {
+function ActionNode({ data, id }) {
+  const handleDelete = () => {
+    if (data.onDelete) {
+      data.onDelete(id);
+    }
+  };
+
   const actionTypeIcons = {
     'SendEmail': <Send className="w-4 h-4" />,
     'SendMessage': <MessageSquare className="w-4 h-4" />,
@@ -215,89 +225,71 @@ function ActionNode({ data }) {
     }
   };
 
-  return (
-    <div className={`bg-white shadow-md rounded-lg border ${getBorderClass(data.actionType)} w-64`}>
-      <div className={`p-2 rounded-t-lg ${getColorClassNames(data.actionType)} flex items-center`}>
-        <div className="p-1.5 bg-white rounded-full mr-2 border border-current shadow-sm">
-          {actionTypeIcons[data.actionType] || <FileEdit className="w-4 h-4" />}
-        </div>
-        <span className="font-medium text-sm">{data.label || 'Action'}</span>
-      </div>
-      
-      <div className="p-3">
-        <div className="mb-3">
-          <div className="text-xs text-gray-500 mb-1">Action Type</div>
-          <div className="text-sm font-medium">
-            {data.actionType || 'Custom Action'}
-          </div>
-        </div>
-        
-        {data.target && (
-          <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">Target</div>
-            <div className="text-sm font-medium">{data.target}</div>
-          </div>
-        )}
-        
-        {data.duration !== undefined && (
-          <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">Duration</div>
-            <div className="text-sm font-medium">{formatDuration(data.duration)}</div>
-          </div>
-        )}
-        
-        {data.description && (
-          <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">Description</div>
-            <div className="text-sm text-gray-700">{data.description}</div>
-          </div>
-        )}
-        
-        {renderActionTypeSpecificContent()}
-        
-        {data.parameters && Object.keys(data.parameters).length > 0 && (
-          <div className="mt-3">
-            <div className="text-xs text-gray-500 mb-1.5">Parameters</div>
-            {renderParameters()}
-          </div>
-        )}
+  // Action type icon mapping
+  const getActionIcon = () => {
+    const actionType = data.actionType?.toLowerCase() || 'reply';
+    
+    switch (actionType) {
+      case 'reply': return <MessageCircle className="h-4 w-4 text-emerald-600" />;
+      case 'dm': return <Mail className="h-4 w-4 text-emerald-600" />;
+      case 'tag': return <Tag className="h-4 w-4 text-emerald-600" />;
+      case 'notification': return <Bell className="h-4 w-4 text-emerald-600" />;
+      case 'webhook': return <Globe className="h-4 w-4 text-emerald-600" />;
+      default: return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+    }
+  };
 
-        {data.retryStrategy && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <div className="flex items-center">
-              <div className="text-xs text-gray-500 mr-2">Retry:</div>
-              <div className="text-xs px-1.5 py-0.5 bg-gray-100 rounded">
-                {data.retryStrategy.attempts} attempts, {data.retryStrategy.interval}s interval
-              </div>
-            </div>
+  return (
+    <div className="relative rounded-lg shadow-md bg-white border-2 border-emerald-200 min-w-[180px] max-w-[250px]">
+      {/* Delete button */}
+      <button
+        className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-sm border border-gray-200 hover:bg-red-50 transition-colors"
+        onClick={handleDelete}
+      >
+        <X className="h-3 w-3 text-gray-500 hover:text-red-500" />
+      </button>
+      
+      {/* Header */}
+      <div className="bg-gradient-to-r from-emerald-50 to-green-50 px-3 py-2 rounded-t-lg border-b border-emerald-100 flex items-center gap-2">
+        <div className="bg-emerald-100 p-1.5 rounded-md">
+          {getActionIcon()}
+        </div>
+        <div className="font-medium text-sm text-emerald-800 truncate">
+          {data.label || 'Action'}
+        </div>
+      </div>
+      
+      {/* Body */}
+      <div className="px-3 py-2 text-xs">
+        {/* Action Type */}
+        <div className="flex items-center mb-2">
+          <span className="text-gray-600 mr-2">Type:</span>
+          <span className="text-gray-800">{data.actionType || 'reply'}</span>
+        </div>
+        
+        {/* Message */}
+        {data.message && (
+          <div className="bg-emerald-50/50 p-1.5 rounded border border-emerald-100 text-emerald-700 mb-2 line-clamp-3">
+            {data.message}
+          </div>
+        )}
+        
+        {/* Description */}
+        {data.description && (
+          <div className="bg-gray-50 p-1.5 rounded border border-gray-100 text-gray-700">
+            {data.description}
           </div>
         )}
       </div>
       
-      {/* Handle for input */}
+      {/* Handle for input (top) */}
       <Handle
         type="target"
         position={Position.Top}
-        className={`w-3 h-3 bg-white border-2 ${getHandleClass(data.actionType)}`}
+        className="w-3 h-3 bg-emerald-500"
       />
-      
-      {/* Handle for output */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className={`w-3 h-3 bg-white border-2 ${getHandleClass(data.actionType)}`}
-      />
-      
-      {/* Visual indicators for input/output */}
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full bg-white p-1">
-        <ChevronRight className={`w-3 h-3 rotate-90 ${actionTypeColors[data.actionType]?.split(' ').find(cls => cls.startsWith('text-')) || 'text-gray-700'}`} />
-      </div>
-      
-      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rounded-full bg-white p-1">
-        <ChevronRight className={`w-3 h-3 -rotate-90 ${actionTypeColors[data.actionType]?.split(' ').find(cls => cls.startsWith('text-')) || 'text-gray-700'}`} />
-      </div>
     </div>
   );
 }
 
-export default ActionNode; 
+export default memo(ActionNode); 

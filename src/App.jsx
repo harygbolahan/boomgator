@@ -18,6 +18,8 @@ import { WhatsAppBotPage } from "@/pages/WhatsAppBotPage"
 import { PaymentPlansPage } from "@/pages/PaymentPlansPage"
 import { NotificationsPage } from "@/pages/NotificationsPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -75,6 +77,18 @@ function App() {
           </ProtectedRoute>
         } />
       </Routes>
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </BrowserRouter>
   )
 }
