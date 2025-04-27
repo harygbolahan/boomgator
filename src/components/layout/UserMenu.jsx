@@ -12,18 +12,43 @@ import {
 } from "lucide-react"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/contexts/AuthContext"
 
 export function UserMenu() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    navigate("/login");
+    try {
+      // Call the auth context logout function
+      logout();
+      console.log('Logout successful, redirecting to login page');
+      
+      // Delay navigation slightly to ensure logout completes
+      setTimeout(() => {
+        // Use replace instead of navigate to prevent going back to dashboard
+        navigate("/auth/login", { replace: true });
+      }, 100);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Force navigation to login page even if there's an error
+      navigate("/auth/login", { replace: true });
+    }
   };
 
   const handleNavigate = (path, e) => {
     e.preventDefault();
     navigate(path);
+  };
+
+  // Get user initials for avatar placeholder
+  const getUserInitials = () => {
+    if (!user) return "?";
+    
+    const firstInitial = user.first_name ? user.first_name.charAt(0) : "";
+    const lastInitial = user.last_name ? user.last_name.charAt(0) : "";
+    
+    return (firstInitial + lastInitial).toUpperCase();
   };
 
   return (
@@ -33,14 +58,13 @@ export function UserMenu() {
       <Popover>
         <PopoverTrigger className="flex items-center gap-2">
           <div className="relative">
-            <img
-              className="h-8 w-8 rounded-full object-cover"
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-              alt="User profile"
-            />
+            {/* If we had a user profile image, we'd use it here */}
+            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-200 font-medium">
+              {getUserInitials()}
+            </div>
             <span className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-400 border border-white" />
           </div>
-          <span className="hidden md:block text-sm">John Doe</span>
+          <span className="hidden md:block text-sm">{user?.first_name || "User"} {user?.last_name || ""}</span>
           <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
         </PopoverTrigger>
         
@@ -48,19 +72,19 @@ export function UserMenu() {
           {/* User profile header */}
           <div className="bg-blue-600 dark:bg-blue-800 p-4">
             <div className="flex items-center space-x-3">
-              <img
-                className="h-12 w-12 rounded-full object-cover"
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                alt="User profile"
-              />
+              <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center text-white font-medium">
+                {getUserInitials()}
+              </div>
               <div>
-                <h4 className="font-medium text-white">John Doe</h4>
-                <p className="text-xs text-blue-100">john.doe@example.com</p>
-                <div className="mt-1">
-                  <span className="text-xs text-white font-medium">
-                    Premium
-                  </span>
-                </div>
+                <h4 className="font-medium text-white">{user?.first_name || "User"} {user?.last_name || ""}</h4>
+                <p className="text-xs text-blue-100">{user?.email || "user@example.com"}</p>
+                {user?.wallet !== undefined && (
+                  <div className="mt-1">
+                    <span className="text-xs text-white font-medium">
+                      Balance: ${user.wallet.toFixed(2)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -72,15 +96,15 @@ export function UserMenu() {
             </div>
             
             <a
-              href="/profile"
-              onClick={(e) => handleNavigate('/profile', e)}
+              href="/account"
+              onClick={(e) => handleNavigate('/account', e)}
               className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               tabIndex={0}
               aria-label="Your Profile"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleNavigate('/profile', e);
+                  handleNavigate('/account', e);
                 }
               }}
             >
@@ -89,15 +113,15 @@ export function UserMenu() {
             </a>
             
             <a
-              href="/settings"
-              onClick={(e) => handleNavigate('/settings', e)}
+              href="/account"
+              onClick={(e) => handleNavigate('/account', e)}
               className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               tabIndex={0}
               aria-label="Settings"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleNavigate('/settings', e);
+                  handleNavigate('/account', e);
                 }
               }}
             >
@@ -123,15 +147,15 @@ export function UserMenu() {
             </a>
             
             <a
-              href="/billing"
-              onClick={(e) => handleNavigate('/billing', e)}
+              href="/payment-plans"
+              onClick={(e) => handleNavigate('/payment-plans', e)}
               className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               tabIndex={0}
               aria-label="Billing"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleNavigate('/billing', e);
+                  handleNavigate('/payment-plans', e);
                 }
               }}
             >
@@ -144,15 +168,15 @@ export function UserMenu() {
             </div>
             
             <a
-              href="/help"
-              onClick={(e) => handleNavigate('/help', e)}
+              href="/support"
+              onClick={(e) => handleNavigate('/support', e)}
               className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               tabIndex={0}
               aria-label="Help Center"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleNavigate('/help', e);
+                  handleNavigate('/support', e);
                 }
               }}
             >
@@ -161,7 +185,7 @@ export function UserMenu() {
             </a>
             
             <a
-              href="/login"
+              href="/auth/login"
               onClick={(e) => {
                 e.preventDefault();
                 handleLogout();

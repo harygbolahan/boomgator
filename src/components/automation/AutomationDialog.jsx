@@ -12,20 +12,27 @@ export const AutomationDialog = ({
   onOpenChange, 
   automation, 
   setAutomation, 
-  onSave 
+  onSave,
+  platforms = []
 }) => {
   // Check if form is valid
   const isValid = Boolean(
     automation?.name?.trim() && 
-    automation?.trigger?.trim() && 
-    automation?.response?.trim()
+    automation?.incoming?.trim() && 
+    automation?.content?.trim() &&
+    automation?.platform
   );
   
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isValid) {
-      onSave(automation);
+      // Add status if not present
+      const automationToSave = {
+        ...automation,
+        status: automation.status || "Active"
+      };
+      onSave(automationToSave);
     }
   };
   
@@ -78,10 +85,10 @@ export const AutomationDialog = ({
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="comment">Comment Automation</SelectItem>
-                    <SelectItem value="message">Message Automation</SelectItem>
-                    <SelectItem value="keyword">Keyword Triggers</SelectItem>
-                    <SelectItem value="story">Story Automation</SelectItem>
+                    <SelectItem value="Comment">Comment Automation</SelectItem>
+                    <SelectItem value="Message">Message Automation</SelectItem>
+                    <SelectItem value="Keyword">Keyword Triggers</SelectItem>
+                    <SelectItem value="Story">Story Automation</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -100,48 +107,55 @@ export const AutomationDialog = ({
                     <SelectValue placeholder="Select platform" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="facebook">Facebook</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="twitter">Twitter</SelectItem>
-                    <SelectItem value="linkedin">LinkedIn</SelectItem>
-                    <SelectItem value="All Platforms">All Platforms</SelectItem>
+                    {platforms.length > 0 ? (
+                      platforms.map(platform => (
+                        <SelectItem key={platform.id} value={platform.id}>{platform.name}</SelectItem>
+                      ))
+                    ) : (
+                      <>
+                        <SelectItem value="398280132">Facebook</SelectItem>
+                        <SelectItem value="398280133">Instagram</SelectItem>
+                        <SelectItem value="398280134">Twitter</SelectItem>
+                        <SelectItem value="398280135">LinkedIn</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="trigger">Trigger</Label>
+              <Label htmlFor="incoming">Trigger Message</Label>
               <Input
-                id="trigger"
-                placeholder="E.g., Comments containing 'price' or 'cost'"
-                value={automation.trigger || ""}
+                id="incoming"
+                placeholder="E.g., I need this product"
+                value={automation.incoming || ""}
                 onChange={(e) => setAutomation({ 
                   ...automation, 
-                  trigger: e.target.value 
+                  incoming: e.target.value 
                 })}
                 required
               />
               <p className="text-[0.8rem] text-muted-foreground">
-                Define what will trigger this automation to run
+                Define what incoming message will trigger this automation
               </p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="response">Response</Label>
+              <Label htmlFor="content">Response Content</Label>
               <Textarea
-                id="response"
-                placeholder="E.g., Thank you for your interest! Our prices start at $99..."
+                id="content"
+                placeholder="E.g., Kindly click the first link under this post to place your order"
                 rows={3}
-                value={automation.response || ""}
+                value={automation.content || ""}
                 onChange={(e) => setAutomation({ 
                   ...automation, 
-                  response: e.target.value 
+                  content: e.target.value 
                 })}
                 required
               />
               <p className="text-[0.8rem] text-muted-foreground">
-                Specify the action to take when the trigger conditions are met
+                Specify the message that will be sent in response
               </p>
             </div>
             

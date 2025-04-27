@@ -3,37 +3,53 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 export const AutomationTypeCard = ({ type, onCreateClick }) => {
+  // Get lowercased type ID for styling
+  const getLowercaseType = (typeId) => typeId?.toLowerCase() || '';
+  
   // Get background color for type
   const getBgForType = (typeId) => {
+    const typeLower = getLowercaseType(typeId);
     const backgrounds = {
       comment: "bg-blue-100",
       message: "bg-green-100",
       keyword: "bg-yellow-100",
       story: "bg-purple-100"
     };
-    return backgrounds[typeId] || "bg-slate-100";
+    return backgrounds[typeLower] || "bg-slate-100";
   };
   
   // Get text color for type
   const getTextColorForType = (typeId) => {
+    const typeLower = getLowercaseType(typeId);
     const colors = {
       comment: "text-blue-700",
       message: "text-green-700",
       keyword: "text-yellow-700",
       story: "text-purple-700"
     };
-    return colors[typeId] || "text-slate-700";
+    return colors[typeLower] || "text-slate-700";
   };
   
   // Get border color for hover state
   const getBorderColorForType = (typeId) => {
+    const typeLower = getLowercaseType(typeId);
     const borders = {
       comment: "group-hover:border-blue-300",
       message: "group-hover:border-green-300",
       keyword: "group-hover:border-yellow-300",
       story: "group-hover:border-purple-300"
     };
-    return borders[typeId] || "group-hover:border-slate-300";
+    return borders[typeLower] || "group-hover:border-slate-300";
+  };
+  
+  // Get button hover class
+  const getButtonHoverClass = (typeId) => {
+    const typeLower = getLowercaseType(typeId);
+    return `group-hover:bg-${typeLower === 'comment' ? 'blue' : 
+                             typeLower === 'message' ? 'green' : 
+                             typeLower === 'keyword' ? 'yellow' : 
+                             typeLower === 'story' ? 'purple' : 
+                             'slate'}-50`;
   };
   
   return (
@@ -49,7 +65,7 @@ export const AutomationTypeCard = ({ type, onCreateClick }) => {
       <Button 
         variant="outline" 
         size="sm" 
-        className={`w-full py-0.5 sm:py-1 h-6 sm:h-8 text-[10px] sm:text-sm group-hover:bg-${type.id === 'comment' ? 'blue' : type.id === 'message' ? 'green' : type.id === 'keyword' ? 'yellow' : type.id === 'story' ? 'purple' : 'slate'}-50`}
+        className={`w-full py-0.5 sm:py-1 h-6 sm:h-8 text-[10px] sm:text-sm ${getButtonHoverClass(type.id)}`}
         onClick={() => onCreateClick(type.id)}
       >
         <Plus className="mr-0.5 sm:mr-1.5 h-2.5 w-2.5 sm:h-3 sm:w-3" />

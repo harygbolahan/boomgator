@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Check } from "lucide-react";
 
-export const FilterDrawer = ({ isOpen, onClose, filters, setFilters }) => {
+export const FilterDrawer = ({ isOpen, onClose, filters, setFilters, platforms = [] }) => {
   const [localFilters, setLocalFilters] = useState(filters);
 
   const handleApplyFilters = () => {
@@ -22,6 +22,17 @@ export const FilterDrawer = ({ isOpen, onClose, filters, setFilters }) => {
     setLocalFilters(resetFilters);
     setFilters(resetFilters);
     onClose();
+  };
+
+  // Get platform name by ID
+  const getPlatformName = (platformId) => {
+    const platformMap = {
+      "398280132": "Facebook",
+      "398280133": "Instagram",
+      "398280134": "Twitter",
+      "398280135": "LinkedIn"
+    };
+    return platformMap[platformId] || platformId;
   };
 
   if (!isOpen) return null;
@@ -60,10 +71,20 @@ export const FilterDrawer = ({ isOpen, onClose, filters, setFilters }) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Platforms</SelectItem>
-                <SelectItem value="facebook">Facebook</SelectItem>
-                <SelectItem value="instagram">Instagram</SelectItem>
-                <SelectItem value="twitter">Twitter</SelectItem>
-                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                {platforms.length > 0 ? (
+                  platforms.map(platform => (
+                    <SelectItem key={platform.id} value={platform.id}>
+                      {platform.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <>
+                    <SelectItem value="398280132">Facebook</SelectItem>
+                    <SelectItem value="398280133">Instagram</SelectItem>
+                    <SelectItem value="398280134">Twitter</SelectItem>
+                    <SelectItem value="398280135">LinkedIn</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -79,10 +100,10 @@ export const FilterDrawer = ({ isOpen, onClose, filters, setFilters }) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="comment">Comment</SelectItem>
-                <SelectItem value="message">Message</SelectItem>
-                <SelectItem value="keyword">Keyword</SelectItem>
-                <SelectItem value="story">Story</SelectItem>
+                <SelectItem value="Comment">Comment</SelectItem>
+                <SelectItem value="Message">Message</SelectItem>
+                <SelectItem value="Keyword">Keyword</SelectItem>
+                <SelectItem value="Story">Story</SelectItem>
               </SelectContent>
             </Select>
           </div>

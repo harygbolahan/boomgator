@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Play, Pause, Edit, MoreHorizontal, X, ExternalLink } from "lucide-react";
+import { Play, Pause, Edit, MoreHorizontal, X, ExternalLink, Copy } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
 
 // Platform indicator component
 const PlatformIndicator = ({ platforms }) => {
@@ -44,42 +47,64 @@ const PlatformIndicator = ({ platforms }) => {
 
 export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, onView }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
-  // Get icon for automation type
-  const getIconForType = (type) => {
-    const icons = {
-      comment: "💬",
-      message: "📨",
-      keyword: "🔑",
-      story: "📱"
+  // Format created date
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    
+    try {
+      // Handle ISO date strings
+      if (dateString.includes('T')) {
+        return format(new Date(dateString), 'MMM d, yyyy');
+      }
+      
+      // Handle already formatted dates
+      return dateString;
+    } catch (error) {
+      console.error("Date formatting error:", error);
+      return dateString;
+    }
+  };
+  
+  // Get icon based on type
+  const getTypeIcon = (type) => {
+    const types = {
+      "Comment": { icon: "💬", bg: "bg-blue-100" },
+      "Message": { icon: "📨", bg: "bg-green-100" },
+      "Keyword": { icon: "🔑", bg: "bg-yellow-100" },
+      "Story": { icon: "📱", bg: "bg-purple-100" }
     };
-    return icons[type.toLowerCase()] || "🤖";
+    
+    return types[type] || { icon: "🤖", bg: "bg-gray-100" };
   };
-
-  // Get background color for type
-  const getBgForType = (type) => {
-    const backgrounds = {
-      comment: "bg-blue-100",
-      message: "bg-green-100",
-      keyword: "bg-yellow-100",
-      story: "bg-purple-100"
+  
+  // Get the display name for platform IDs
+  const getPlatformName = (platformId) => {
+    const platforms = {
+      "398280132": "Facebook",
+      "398280133": "Instagram",
+      "398280134": "Twitter",
+      "398280135": "LinkedIn"
     };
-    return backgrounds[type.toLowerCase()] || "bg-slate-100";
+    
+    return platforms[platformId] || platformId;
   };
-
-  // Status badge variants
-  const statusVariants = {
-    "Active": "bg-green-100 text-green-800 hover:bg-green-200",
-    "Paused": "bg-amber-100 text-amber-800 hover:bg-amber-200",
-    "Draft": "bg-slate-100 text-slate-800 hover:bg-slate-200"
+  
+  // Status toggle function
+  const toggleStatus = () => {
+    const newStatus = automation.status === "Active" ? "Paused" : "Active";
+    onStatusChange(automation.id, newStatus);
   };
-
-  const handleToggleStatus = () => {
-    onStatusChange(
-      automation.id, 
-      automation.status === "Active" ? "Paused" : "Active"
-    );
+  
+  // Delete confirmation
+  const confirmDelete = () => {
+    setDeleteDialogOpen(false);
+    onDelete(automation.id);
   };
+  
+  // Get the icon info
+  const { icon, bg } = getTypeIcon(automation.type);
 
   // Generate automatic card ID
   const id = automation.id || `auto-${automation.name.replace(/\s+/g, '-').toLowerCase()}`;
@@ -96,120 +121,120 @@ export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, o
       transition={{ duration: 0.2 }}
       className="bg-card rounded-xl border shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden w-full"
     >
-      <div className="p-3 sm:p-5">
-        <div className="flex justify-between items-start mb-3 sm:mb-4">
-          <Badge 
-            variant="outline" 
-            className={`${statusVariants[automation.status]} cursor-default transition-colors text-[10px] sm:text-xs px-1.5`}
-          >
-            {automation.status}
-          </Badge>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-8 sm:w-8 rounded-full">
-                <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="sr-only">Actions menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(automation)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              {onView && (
-                <DropdownMenuItem onClick={() => onView(automation)}>
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  View Details
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={handleToggleStatus}>
-                {automation.status === "Active" ? (
-                  <>
-                    <Pause className="mr-2 h-4 w-4" />
-                    Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Activate
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => onDelete(id)} 
-                className="text-red-600 focus:text-red-700 focus:bg-red-50"
+      <Card className="overflow-hidden border border-border">
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+              <div className={`rounded-full h-10 w-10 flex items-center justify-center ${bg}`}>
+                <span className="text-lg">{icon}</span>
+              </div>
+              <div>
+                <CardTitle className="text-lg">{automation.name}</CardTitle>
+                <CardDescription className="flex items-center flex-wrap gap-1.5 mt-1">
+                  <span className="truncate max-w-[150px] sm:max-w-none">
+                    {getPlatformName(automation.platform)}
+                  </span>
+                  <span className="text-xs">•</span>
+                  <span>{automation.type}</span>
+                </CardDescription>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Badge 
+                variant={automation.status === "Active" ? "success" : 
+                        automation.status === "Paused" ? "warning" : "secondary"}
+                className="h-6"
               >
-                <X className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        
-        <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-4">
-          <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${getBgForType(automation.type)}`}>
-            <span className="text-sm sm:text-base">{automation.icon || getIconForType(automation.type)}</span>
-          </div>
-          <div className="overflow-hidden">
-            <h3 className="font-medium text-sm sm:text-base truncate">{automation.name}</h3>
-            <div className="flex items-center mt-0.5 sm:mt-1 gap-1.5 sm:gap-2">
-              <PlatformIndicator platforms={automation.platform} />
-              <span className="text-[10px] sm:text-xs text-muted-foreground">{automation.type}</span>
+                {automation.status}
+              </Badge>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={toggleStatus} className="cursor-pointer">
+                    {automation.status === "Active" ? (
+                      <><Pause className="mr-2 h-4 w-4" /> Pause</>
+                    ) : (
+                      <><Play className="mr-2 h-4 w-4" /> Activate</>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onEdit(automation)} className="cursor-pointer">
+                    <Edit className="mr-2 h-4 w-4" /> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onView(automation)} className="cursor-pointer">
+                    <ExternalLink className="mr-2 h-4 w-4" /> View Details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Copy className="mr-2 h-4 w-4" /> Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => setDeleteDialogOpen(true)} 
+                    className="text-destructive cursor-pointer"
+                  >
+                    <X className="mr-2 h-4 w-4" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-        </div>
+        </CardHeader>
         
-        <div className="space-y-1 sm:space-y-2 mb-2 sm:mb-4 text-[10px] sm:text-sm">
-          <div className="flex gap-1">
-            <span className="text-muted-foreground font-medium min-w-[45px] sm:min-w-[60px]">Trigger:</span>
-            <span className="truncate">{automation.trigger}</span>
+        <CardContent className="pb-3">
+          <div className="grid gap-2">
+            <div>
+              <h4 className="text-sm font-medium mb-1">Trigger:</h4>
+              <p className="text-sm text-muted-foreground">{automation.incoming}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium mb-1">Response:</h4>
+              <p className="text-sm text-muted-foreground">{automation.content}</p>
+            </div>
           </div>
-          <div className="flex gap-1">
-            <span className="text-muted-foreground font-medium min-w-[45px] sm:min-w-[60px]">Response:</span>
-            <span className="truncate">{automation.response}</span>
-          </div>
-        </div>
+        </CardContent>
         
-        <div className="flex justify-between items-center text-[10px] sm:text-xs text-muted-foreground">
-          <span className="truncate mr-2">Created {automation.created}</span>
-          <Badge variant={automation.triggered > 0 ? "default" : "outline"} className="h-4 sm:h-5 text-[10px] sm:text-xs shrink-0">
-            {automation.triggered} today
-          </Badge>
-        </div>
-      </div>
+        <CardFooter className="pt-0 border-t flex justify-between items-center text-xs text-muted-foreground">
+          <span>Created: {formatDate(automation.created_at || automation.created)}</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center">
+                  <Badge variant="outline" className="h-5">
+                    {automation.triggers} Triggers
+                  </Badge>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p className="text-xs">Number of times this automation has been triggered</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardFooter>
+      </Card>
       
-      <motion.div 
-        className="border-t p-1.5 sm:p-3 bg-muted/20 flex items-center justify-between"
-        initial={{ opacity: 0.8 }}
-        animate={{ opacity: isHovered ? 1 : 0.8 }}
-      >
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={handleToggleStatus}
-          className={`text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 h-6 sm:h-7 ${automation.status === "Active" ? "text-amber-600" : "text-emerald-600"}`}
-        >
-          {automation.status === "Active" ? (
-            <>
-              <Pause className="mr-0.5 sm:mr-1.5 h-3 w-3" /> Pause
-            </>
-          ) : (
-            <>
-              <Play className="mr-0.5 sm:mr-1.5 h-3 w-3" /> Activate
-            </>
-          )}
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => onEdit(automation)}
-          className="text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 h-6 sm:h-7"
-        >
-          <Edit className="mr-0.5 sm:mr-1.5 h-3 w-3" /> Edit
-        </Button>
-      </motion.div>
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this automation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the "{automation.name}" automation
+              and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }; 

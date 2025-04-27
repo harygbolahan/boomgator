@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, Filter, X, LayoutDashboard, Wand2, Sparkles } from "lucide-react";
+import { Plus, Search, Filter, X, LayoutDashboard, Wand2, Sparkles, MessageCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "react-toastify";
 
@@ -16,6 +16,10 @@ import { AutomationCard } from "@/components/automation/AutomationCard";
 import { AutomationTypeCard } from "@/components/automation/AutomationTypeCard";
 import { FilterDrawer } from "@/components/automation/FilterDrawer";
 import { AutomationDialog } from "@/components/automation/AutomationDialog";
+import { CommentReplies } from '@/components/comments/CommentReplies';
+
+// Import API services
+import { automationService, commentRepliesService } from "@/lib/api";
 
 // EmptyState component
 const EmptyState = ({ searchQuery, onCreateClick }) => (
@@ -100,9 +104,9 @@ const ActiveFilters = ({ filters, setFilters }) => {
 export function AutomationPage() {
   // State
   const [activeTab, setActiveTab] = useState("automations");
-  const [automationsList, setAutomationsList] = useState(
-    automations.map((automation, index) => ({ ...automation, id: `auto-${index}` }))
-  );
+  const [automationsList, setAutomationsList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     platform: "all",
     type: "all",
@@ -114,6 +118,27 @@ export function AutomationPage() {
   const [currentAutomation, setCurrentAutomation] = useState(null);
   const [connectedAccounts, setConnectedAccounts] = useState([]);
   
+  // Fetch automations on component mount
+  useEffect(() => {
+    fetchAutomations();
+  }, []);
+  
+  // Fetch automations from API
+  const fetchAutomations = async () => {
+    try {
+      setLoading(true);
+      const data = await automationService.getAllAutomations();
+      setAutomationsList(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching automations:", err);
+      setError("Failed to load automations. Please try again later.");
+      toast.error("Failed to load automations");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Initialize Facebook SDK
   useEffect(() => {
     initFacebookSdk().catch(error => console.error("Failed to initialize Facebook SDK:", error));
@@ -124,14 +149,14 @@ export function AutomationPage() {
     // Search query filter
     const matchesSearch = !searchQuery || 
       automation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      automation.trigger.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      automation.response.toLowerCase().includes(searchQuery.toLowerCase());
+      automation.incoming.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      automation.content.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Other filters
     const matchesPlatform = filters.platform === "all" || 
-      automation.platform.toLowerCase().includes(filters.platform.toLowerCase());
+      automation.platform === filters.platform;
     const matchesType = filters.type === "all" || 
-      automation.type.toLowerCase() === filters.type.toLowerCase();
+      automation.type === filters.type;
     const matchesStatus = filters.status === "all" || 
       automation.status === filters.status;
     
@@ -144,18 +169,24 @@ export function AutomationPage() {
       setCurrentAutomation({
         name: "",
         type: type,
-        platform: "facebook",
-        trigger: "",
-        response: "",
+        platform: "398280132", // Default to Facebook
+        incoming: "",
+        content: "",
+        status: "Active",
+        triggers: 0,
+        actions: 0,
         isNew: true
       });
     } else {
       setCurrentAutomation({
         name: "",
-        type: "comment",
-        platform: "facebook",
-        trigger: "",
-        response: "",
+        type: "Comment",
+        platform: "398280132", // Default to Facebook
+        incoming: "",
+        content: "",
+        status: "Active",
+        triggers: 0,
+        actions: 0,
         isNew: true
       });
     }
@@ -179,106 +210,140 @@ export function AutomationPage() {
   };
   
   // Save a new or edited automation
-  const handleSaveAutomation = (automation) => {
-    if (automation.isNew) {
-      // Create new automation
-      const newItem = {
-        ...automation,
-        id: `auto-${Date.now()}`,
-        status: "Active",
-        created: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        triggered: 0
-      };
-      
-      setAutomationsList([newItem, ...automationsList]);
-      
-      toast.success(`"${newItem.name}" has been created successfully.`);
-    } else {
-      // Update existing automation
-      const updatedList = automationsList.map(item => 
-        item.id === automation.id ? { ...item, ...automation } : item
-      );
-      
-      setAutomationsList(updatedList);
-      
-      toast.success(`"${automation.name}" has been updated successfully.`);
+  const handleSaveAutomation = async (automation) => {
+    try {
+      if (automation.isNew) {
+        // Create new automation
+        const { isNew, ...autoData } = automation;
+        const response = await automationService.createAutomation(autoData);
+        
+        // Update the automations list with the new item
+        setAutomationsList([response, ...automationsList]);
+        
+        toast.success(`"${response.name}" has been created successfully.`);
+      } else {
+        // Update existing automation
+        const { isNew, ...autoData } = automation;
+        const response = await automationService.updateAutomation(autoData);
+        
+        // Update the automations list
+        const updatedList = automationsList.map(item => 
+          item.id === response.id ? response : item
+        );
+        
+        setAutomationsList(updatedList);
+        
+        toast.success(`"${response.name}" has been updated successfully.`);
+      }
+    } catch (err) {
+      console.error("Error saving automation:", err);
+      toast.error(`Failed to ${automation.isNew ? 'create' : 'update'} automation: ${err.message}`);
     }
     
     setShowAutomationDialog(false);
   };
   
   // Change the status of an automation
-  const handleStatusChange = (id, newStatus) => {
-    const updatedAutomations = automationsList.map(item => 
-      item.id === id ? { ...item, status: newStatus } : item
-    );
-    
-    setAutomationsList(updatedAutomations);
-    
-    const automation = automationsList.find(item => item.id === id);
-    
-    toast.info(`"${automation.name}" is now ${newStatus.toLowerCase()}.`);
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const automation = automationsList.find(item => item.id === id);
+      if (!automation) return;
+      
+      const response = await automationService.updateAutomation({
+        ...automation,
+        status: newStatus
+      });
+      
+      // Update the automations list
+      const updatedAutomations = automationsList.map(item => 
+        item.id === id ? response : item
+      );
+      
+      setAutomationsList(updatedAutomations);
+      
+      toast.info(`"${response.name}" is now ${newStatus.toLowerCase()}.`);
+    } catch (err) {
+      console.error("Error updating automation status:", err);
+      toast.error(`Failed to update status: ${err.message}`);
+    }
   };
   
   // Delete an automation
-  const handleDeleteAutomation = (id) => {
-    const automation = automationsList.find(item => item.id === id);
-    const updatedList = automationsList.filter(item => item.id !== id);
-    
-    setAutomationsList(updatedList);
-    
-    toast.error(`"${automation.name}" has been deleted.`);
+  const handleDeleteAutomation = async (id) => {
+    try {
+      const automation = automationsList.find(item => item.id === id);
+      if (!automation) return;
+      
+      await automationService.deleteAutomation(id);
+      
+      // Update the automations list
+      const updatedList = automationsList.filter(item => item.id !== id);
+      setAutomationsList(updatedList);
+      
+      toast.success(`"${automation.name}" has been deleted.`);
+    } catch (err) {
+      console.error("Error deleting automation:", err);
+      toast.error(`Failed to delete automation: ${err.message}`);
+    }
   };
   
   // Save an automation from the flow builder
-  const handleFlowBuilderSave = (automationFlow) => {
-    const newItem = {
-      id: `auto-${Date.now()}`,
-      name: automationFlow.name,
-      type: automationFlow.type || "Custom",
-      platform: automationFlow.platform || "All Platforms",
-      status: "Active",
-      trigger: automationFlow.trigger || "Custom trigger",
-      response: automationFlow.response || "Custom action",
-      created: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      triggered: 0
-    };
-    
-    setAutomationsList([newItem, ...automationsList]);
-    setActiveTab("automations");
-    
-    toast.success(`"${newItem.name}" has been created successfully.`);
+  const handleFlowBuilderSave = async (automationFlow) => {
+    try {
+      const newAutomation = {
+        name: automationFlow.name,
+        type: automationFlow.type || "Custom",
+        platform: automationFlow.platform || "398280132", // Default to Facebook
+        status: "Active",
+        incoming: automationFlow.trigger || "Custom trigger",
+        content: automationFlow.response || "Custom action",
+        triggers: 0,
+        actions: 0
+      };
+      
+      const response = await automationService.createAutomation(newAutomation);
+      
+      // Update the automations list
+      setAutomationsList([response, ...automationsList]);
+      setActiveTab("automations");
+      
+      toast.success(`"${response.name}" has been created successfully.`);
+    } catch (err) {
+      console.error("Error creating automation from flow builder:", err);
+      toast.error(`Failed to create automation: ${err.message}`);
+    }
   };
   
   // Main tabs definition
   const mainTabs = [
     { id: "automations", name: "Automations", icon: <LayoutDashboard className="h-4 w-4 mr-2" /> },
     { id: "flow-builder", name: "Flow Builder", icon: <Wand2 className="h-4 w-4 mr-2" /> },
+    { id: "comments", name: "Comments", icon: <MessageCircle className="h-4 w-4 mr-2" /> },
     { id: "accounts", name: "Connected Accounts", icon: <Sparkles className="h-4 w-4 mr-2" /> }
   ];
   
   // Automation types data
   const automationTypes = [
     {
-      id: "comment",
+      id: "Comment",
       icon: "💬",
       title: "Comment Automation",
       description: "Auto-reply to comments on your posts and ads."
     },
     {
-      id: "message",
+      id: "Message",
       icon: "📨",
       title: "Message Automation",
       description: "Set up responses for direct messages and inquiries."
     },
     {
-      id: "keyword",
+      id: "Keyword",
       icon: "🔑",
       title: "Keyword Triggers",
       description: "Create automated flows based on specific keywords."
     },
     {
-      id: "story",
+      id: "Story",
       icon: "📱",
       title: "Story Automation",
       description: "Respond to story mentions and interactions."
@@ -321,7 +386,7 @@ export function AutomationPage() {
         
         {/* Main tabs navigation - Improved for mobile */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 sm:mt-6">
-          <TabsList className="grid grid-cols-3 mb-4 sm:mb-8 w-full">
+          <TabsList className="grid grid-cols-4 mb-4 sm:mb-8 w-full">
             {mainTabs.map(tab => (
               <TabsTrigger 
                 key={tab.id} 
@@ -372,39 +437,58 @@ export function AutomationPage() {
             {/* Active filters */}
             <ActiveFilters filters={filters} setFilters={setFilters} />
             
+            {/* Loading state */}
+            {loading && (
+              <div className="flex items-center justify-center p-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            )}
+            
+            {/* Error state */}
+            {error && !loading && (
+              <div className="p-6 text-center">
+                <p className="text-red-500 mb-4">{error}</p>
+                <Button variant="outline" onClick={fetchAutomations}>
+                  Retry
+                </Button>
+              </div>
+            )}
+            
             {/* Automation cards or empty state */}
-            <div className="space-y-4 sm:space-y-6">
-              {filteredAutomations.length > 0 ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-base sm:text-lg">Your Automations</h3>
-                    <span className="text-xs sm:text-sm text-muted-foreground">
-                      {filteredAutomations.length} automation{filteredAutomations.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 gap-4 sm:gap-6">
-                    <AnimatePresence>
-                      {filteredAutomations.map((automation) => (
-                        <AutomationCard
-                          key={automation.id}
-                          automation={automation}
-                          onStatusChange={handleStatusChange}
-                          onEdit={handleEditAutomation}
-                          onDelete={handleDeleteAutomation}
-                          onView={handleViewAutomation}
-                        />
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                </>
-              ) : (
-                <EmptyState 
-                  searchQuery={searchQuery} 
-                  onCreateClick={() => handleOpenAutomationDialog()} 
-                />
-              )}
-            </div>
+            {!loading && !error && (
+              <div className="space-y-4 sm:space-y-6">
+                {filteredAutomations.length > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-base sm:text-lg">Your Automations</h3>
+                      <span className="text-xs sm:text-sm text-muted-foreground">
+                        {filteredAutomations.length} automation{filteredAutomations.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                      <AnimatePresence>
+                        {filteredAutomations.map((automation) => (
+                          <AutomationCard
+                            key={automation.id}
+                            automation={automation}
+                            onStatusChange={handleStatusChange}
+                            onEdit={handleEditAutomation}
+                            onDelete={handleDeleteAutomation}
+                            onView={handleViewAutomation}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </>
+                ) : (
+                  <EmptyState 
+                    searchQuery={searchQuery} 
+                    onCreateClick={() => handleOpenAutomationDialog()} 
+                  />
+                )}
+              </div>
+            )}
             
             {/* Automation types section - Improved for mobile */}
             <motion.div 
@@ -431,6 +515,11 @@ export function AutomationPage() {
             <AutomationFlowBuilder onSave={handleFlowBuilderSave} />
           </TabsContent>
           
+          {/* Comments Tab */}
+          <TabsContent value="comments" className="animate-in fade-in-50 duration-300">
+            <CommentReplies />
+          </TabsContent>
+          
           {/* Connected Accounts Tab */}
           <TabsContent value="accounts" className="animate-in fade-in-50 duration-300">
             <SocialMediaConnect onAccountConnected={setConnectedAccounts} />
@@ -446,6 +535,12 @@ export function AutomationPage() {
             onClose={() => setShowFilterDrawer(false)}
             filters={filters}
             setFilters={setFilters}
+            platforms={[
+              { id: "398280132", name: "Facebook" },
+              { id: "398280133", name: "Instagram" },
+              { id: "398280134", name: "Twitter" },
+              { id: "398280135", name: "LinkedIn" }
+            ]}
           />
         )}
       </AnimatePresence>
@@ -457,83 +552,13 @@ export function AutomationPage() {
         automation={currentAutomation}
         setAutomation={setCurrentAutomation}
         onSave={handleSaveAutomation}
+        platforms={[
+          { id: "398280132", name: "Facebook" },
+          { id: "398280133", name: "Instagram" },
+          { id: "398280134", name: "Twitter" },
+          { id: "398280135", name: "LinkedIn" }
+        ]}
       />
     </>
   );
-}
-
-// Sample data
-const automations = [
-  {
-    name: "Comment Responder",
-    platform: "Facebook, Instagram",
-    type: "Comment",
-    status: "Active",
-    icon: "💬",
-    iconBg: "bg-blue-100",
-    trigger: "Comments on posts and ads",
-    response: "Thank you message with product link",
-    created: "Jul 10, 2023",
-    triggered: 24
-  },
-  {
-    name: "DM Welcome",
-    platform: "Instagram",
-    type: "Message",
-    status: "Active",
-    icon: "📨",
-    iconBg: "bg-green-100",
-    trigger: "First-time direct message",
-    response: "Welcome message with FAQ links",
-    created: "Aug 5, 2023",
-    triggered: 12
-  },
-  {
-    name: "Product Inquiry",
-    platform: "All Platforms",
-    type: "Keyword",
-    status: "Paused",
-    icon: "🔑",
-    iconBg: "bg-yellow-100",
-    trigger: "Keywords: price, cost, how much",
-    response: "Pricing info and catalog link",
-    created: "Jun 22, 2023",
-    triggered: 0
-  },
-  {
-    name: "Story Mentions",
-    platform: "Instagram",
-    type: "Story",
-    status: "Active",
-    icon: "📱",
-    iconBg: "bg-purple-100",
-    trigger: "When brand is mentioned in stories",
-    response: "Thank you message with discount code",
-    created: "Jul 30, 2023",
-    triggered: 8
-  },
-  {
-    name: "Customer Support",
-    platform: "Facebook",
-    type: "Keyword",
-    status: "Active",
-    icon: "🛠️",
-    iconBg: "bg-red-100",
-    trigger: "Keywords: help, support, issue",
-    response: "Support ticket creation and contact info",
-    created: "Aug 2, 2023",
-    triggered: 5
-  },
-  {
-    name: "Appointment Booking",
-    platform: "LinkedIn, Facebook",
-    type: "Message",
-    status: "Draft",
-    icon: "📅",
-    iconBg: "bg-indigo-100",
-    trigger: "Keywords: appointment, book, schedule",
-    response: "Booking link with calendar access",
-    created: "Aug 8, 2023",
-    triggered: 0
-  }
-]; 
+} 
