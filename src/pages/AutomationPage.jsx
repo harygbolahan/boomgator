@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { SocialMediaConnect } from "@/components/SocialMediaConnect";
 import { initFacebookSdk } from "@/lib/socialMediaAuth";
-import { AutomationFlowBuilder } from "@/components/automation/AutomationFlowBuilder";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, Filter, X, LayoutDashboard, Wand2, Sparkles, MessageCircle } from "lucide-react";
+import { Plus, Search, Filter, X, LayoutDashboard, MessageCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "react-toastify";
 
@@ -19,7 +17,15 @@ import { AutomationDialog } from "@/components/automation/AutomationDialog";
 import { CommentReplies } from '@/components/comments/CommentReplies';
 
 // Import API services
-import { automationService, commentRepliesService } from "@/lib/api";
+import { automationService } from "@/lib/api";
+
+// Define platform mapping consistently
+const PLATFORMS = {
+  "398280132": "Facebook",
+  "398280133": "Instagram",
+  "398280134": "Twitter",
+  "398280135": "LinkedIn"
+};
 
 // EmptyState component
 const EmptyState = ({ searchQuery, onCreateClick }) => (
@@ -32,7 +38,7 @@ const EmptyState = ({ searchQuery, onCreateClick }) => (
       {searchQuery ? (
         <Search className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
       ) : (
-        <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+        <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
       )}
     </div>
     <h3 className="font-medium text-base sm:text-lg mb-2">
@@ -116,7 +122,7 @@ export function AutomationPage() {
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [showAutomationDialog, setShowAutomationDialog] = useState(false);
   const [currentAutomation, setCurrentAutomation] = useState(null);
-  const [connectedAccounts, setConnectedAccounts] = useState([]);
+  const [selectedType, setSelectedType] = useState(null);
   
   // Fetch automations on component mount
   useEffect(() => {
@@ -163,27 +169,32 @@ export function AutomationPage() {
     return matchesSearch && matchesPlatform && matchesType && matchesStatus;
   });
   
-  // Open the automation dialog for creating a new automation
+  // Improved automation creation process
   const handleOpenAutomationDialog = (type = null) => {
     if (type) {
+      setSelectedType(type);
       setCurrentAutomation({
-        name: "",
+        name: `New ${type} Automation`,
         type: type,
         platform: "398280132", // Default to Facebook
-        incoming: "",
-        content: "",
+        incoming: type === "Comment" ? "New comment on post" : 
+                  type === "Message" ? "Direct message received" : 
+                  type === "Keyword" ? "Message contains keywords" : 
+                  "Story mention",
+        content: `Thank you for your ${type.toLowerCase()}! We'll get back to you shortly.`,
         status: "Active",
         triggers: 0,
         actions: 0,
         isNew: true
       });
     } else {
+      setSelectedType(null);
       setCurrentAutomation({
-        name: "",
+        name: "New Automation",
         type: "Comment",
         platform: "398280132", // Default to Facebook
-        incoming: "",
-        content: "",
+        incoming: "New comment on post",
+        content: "Thank you for your comment! We'll get back to you shortly.",
         status: "Active",
         triggers: 0,
         actions: 0,
@@ -287,39 +298,10 @@ export function AutomationPage() {
     }
   };
   
-  // Save an automation from the flow builder
-  const handleFlowBuilderSave = async (automationFlow) => {
-    try {
-      const newAutomation = {
-        name: automationFlow.name,
-        type: automationFlow.type || "Custom",
-        platform: automationFlow.platform || "398280132", // Default to Facebook
-        status: "Active",
-        incoming: automationFlow.trigger || "Custom trigger",
-        content: automationFlow.response || "Custom action",
-        triggers: 0,
-        actions: 0
-      };
-      
-      const response = await automationService.createAutomation(newAutomation);
-      
-      // Update the automations list
-      setAutomationsList([response, ...automationsList]);
-      setActiveTab("automations");
-      
-      toast.success(`"${response.name}" has been created successfully.`);
-    } catch (err) {
-      console.error("Error creating automation from flow builder:", err);
-      toast.error(`Failed to create automation: ${err.message}`);
-    }
-  };
-  
-  // Main tabs definition
+  // Main tabs definition (removed flow-builder and accounts)
   const mainTabs = [
     { id: "automations", name: "Automations", icon: <LayoutDashboard className="h-4 w-4 mr-2" /> },
-    { id: "flow-builder", name: "Flow Builder", icon: <Wand2 className="h-4 w-4 mr-2" /> },
-    { id: "comments", name: "Comments", icon: <MessageCircle className="h-4 w-4 mr-2" /> },
-    { id: "accounts", name: "Connected Accounts", icon: <Sparkles className="h-4 w-4 mr-2" /> }
+    { id: "comments", name: "Comments", icon: <MessageCircle className="h-4 w-4 mr-2" /> }
   ];
   
   // Automation types data
@@ -386,7 +368,7 @@ export function AutomationPage() {
         
         {/* Main tabs navigation - Improved for mobile */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 sm:mt-6">
-          <TabsList className="grid grid-cols-4 mb-4 sm:mb-8 w-full">
+          <TabsList className="grid grid-cols-2 mb-4 sm:mb-8 w-full">
             {mainTabs.map(tab => (
               <TabsTrigger 
                 key={tab.id} 
@@ -510,19 +492,9 @@ export function AutomationPage() {
             </motion.div>
           </TabsContent>
           
-          {/* Flow Builder Tab */}
-          <TabsContent value="flow-builder" className="animate-in fade-in-50 duration-300">
-            <AutomationFlowBuilder onSave={handleFlowBuilderSave} />
-          </TabsContent>
-          
           {/* Comments Tab */}
           <TabsContent value="comments" className="animate-in fade-in-50 duration-300">
             <CommentReplies />
-          </TabsContent>
-          
-          {/* Connected Accounts Tab */}
-          <TabsContent value="accounts" className="animate-in fade-in-50 duration-300">
-            <SocialMediaConnect onAccountConnected={setConnectedAccounts} />
           </TabsContent>
         </Tabs>
       </div>
@@ -535,29 +507,20 @@ export function AutomationPage() {
             onClose={() => setShowFilterDrawer(false)}
             filters={filters}
             setFilters={setFilters}
-            platforms={[
-              { id: "398280132", name: "Facebook" },
-              { id: "398280133", name: "Instagram" },
-              { id: "398280134", name: "Twitter" },
-              { id: "398280135", name: "LinkedIn" }
-            ]}
+            platforms={Object.entries(PLATFORMS).map(([id, name]) => ({ id, name }))}
           />
         )}
       </AnimatePresence>
       
-      {/* Automation dialog */}
+      {/* Improved Automation dialog with better defaults */}
       <AutomationDialog
         open={showAutomationDialog}
         onOpenChange={setShowAutomationDialog}
         automation={currentAutomation}
         setAutomation={setCurrentAutomation}
         onSave={handleSaveAutomation}
-        platforms={[
-          { id: "398280132", name: "Facebook" },
-          { id: "398280133", name: "Instagram" },
-          { id: "398280134", name: "Twitter" },
-          { id: "398280135", name: "LinkedIn" }
-        ]}
+        selectedType={selectedType}
+        platforms={Object.entries(PLATFORMS).map(([id, name]) => ({ id, name }))}
       />
     </>
   );

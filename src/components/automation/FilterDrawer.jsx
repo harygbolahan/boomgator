@@ -5,6 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Check } from "lucide-react";
 
+// Define platform mapping consistently
+const PLATFORMS = {
+  "398280132": "Facebook",
+  "398280133": "Instagram",
+  "398280134": "Twitter",
+  "398280135": "LinkedIn"
+};
+
 export const FilterDrawer = ({ isOpen, onClose, filters, setFilters, platforms = [] }) => {
   const [localFilters, setLocalFilters] = useState(filters);
 
@@ -26,13 +34,7 @@ export const FilterDrawer = ({ isOpen, onClose, filters, setFilters, platforms =
 
   // Get platform name by ID
   const getPlatformName = (platformId) => {
-    const platformMap = {
-      "398280132": "Facebook",
-      "398280133": "Instagram",
-      "398280134": "Twitter",
-      "398280135": "LinkedIn"
-    };
-    return platformMap[platformId] || platformId;
+    return PLATFORMS[platformId] || platformId;
   };
 
   if (!isOpen) return null;
@@ -78,12 +80,11 @@ export const FilterDrawer = ({ isOpen, onClose, filters, setFilters, platforms =
                     </SelectItem>
                   ))
                 ) : (
-                  <>
-                    <SelectItem value="398280132">Facebook</SelectItem>
-                    <SelectItem value="398280133">Instagram</SelectItem>
-                    <SelectItem value="398280134">Twitter</SelectItem>
-                    <SelectItem value="398280135">LinkedIn</SelectItem>
-                  </>
+                  Object.entries(PLATFORMS).map(([id, name]) => (
+                    <SelectItem key={id} value={id}>
+                      {name}
+                    </SelectItem>
+                  ))
                 )}
               </SelectContent>
             </Select>

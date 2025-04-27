@@ -22,12 +22,12 @@ const replyTypes = [
   { value: "fan", label: "Fan", color: "bg-purple-500" }
 ];
 
-// Platform mapping
-const platforms = {
-  1: "Facebook",
-  2: "Instagram",
-  3: "Twitter",
-  4: "LinkedIn"
+// Platform mapping - consistent with other components
+const PLATFORMS = {
+  "398280132": "Facebook",
+  "398280133": "Instagram",
+  "398280134": "Twitter",
+  "398280135": "LinkedIn"
 };
 
 // Empty state component
@@ -49,7 +49,7 @@ const EmptyState = () => (
 
 // CommentCard component
 const CommentCard = ({ comment, onReply }) => {
-  const platformName = platforms[comment.platform_id] || "Unknown";
+  const platformName = PLATFORMS[comment.platform_id] || "Unknown";
   const replyType = replyTypes.find(type => type.value === comment.reply) || 
     { value: comment.reply, label: comment.reply, color: "bg-gray-500" };
   
@@ -132,7 +132,7 @@ const ReplyDialog = ({ open, onOpenChange, comment, onSubmit }) => {
         <DialogHeader>
           <DialogTitle>Reply to Comment</DialogTitle>
           <DialogDescription>
-            Reply to the comment from {platforms[comment.platform_id] || "Unknown"}.
+            Reply to the comment from {PLATFORMS[comment.platform_id] || "Unknown"}.
           </DialogDescription>
         </DialogHeader>
         
@@ -194,7 +194,7 @@ const ActiveFilters = ({ filters, onClearFilter, onClearAll }) => {
     <div className="flex flex-wrap gap-2 mb-4">
       {filters.platform && (
         <Badge variant="outline" className="flex items-center gap-1">
-          Platform: {platforms[filters.platform] || filters.platform}
+          Platform: {PLATFORMS[filters.platform] || filters.platform}
           <X 
             className="h-3 w-3 cursor-pointer ml-1" 
             onClick={() => onClearFilter('platform')}
@@ -238,7 +238,7 @@ const ActiveFilters = ({ filters, onClearFilter, onClearAll }) => {
 const CommentDetailsView = ({ comment, onBack, onReply }) => {
   const [relatedComments, setRelatedComments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const platformName = platforms[comment.platform_id] || "Unknown";
+  const platformName = PLATFORMS[comment.platform_id] || "Unknown";
   const replyType = replyTypes.find(type => type.value === comment.reply) || 
     { value: comment.reply, label: comment.reply, color: "bg-gray-500" };
   
@@ -336,19 +336,19 @@ const CommentDetailsView = ({ comment, onBack, onReply }) => {
 
 // Main CommentReplies component
 export const CommentReplies = () => {
+  const [activeTab, setActiveTab] = useState("all");
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     platform: "",
     replyType: "",
     search: ""
   });
-  const [searchInput, setSearchInput] = useState("");
-  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
-  const [selectedComment, setSelectedComment] = useState(null);
-  const [viewMode, setViewMode] = useState("list");
+  const [showReplyDialog, setShowReplyDialog] = useState(false);
   const [currentComment, setCurrentComment] = useState(null);
+  const [selectedComment, setSelectedComment] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Fetch comments on component mount
   useEffect(() => {
@@ -372,7 +372,7 @@ export const CommentReplies = () => {
   // Handle reply to comment
   const handleReply = (comment) => {
     setSelectedComment(comment);
-    setReplyDialogOpen(true);
+    setShowReplyDialog(true);
   };
   
   // Handle submit reply
@@ -394,7 +394,7 @@ export const CommentReplies = () => {
   const handleSearch = () => {
     setFilters({
       ...filters,
-      search: searchInput.trim()
+      search: searchQuery.trim()
     });
   };
   
@@ -422,7 +422,7 @@ export const CommentReplies = () => {
     });
     
     if (filterName === 'search') {
-      setSearchInput("");
+      setSearchQuery("");
     }
   };
   
@@ -433,7 +433,7 @@ export const CommentReplies = () => {
       replyType: "",
       search: ""
     });
-    setSearchInput("");
+    setSearchQuery("");
   };
   
   // Apply filters to the comments list
@@ -464,193 +464,199 @@ export const CommentReplies = () => {
   // Handle viewing comment details
   const handleViewComment = (comment) => {
     setCurrentComment(comment);
-    setViewMode("detail");
+    setShowReplyDialog(false);
   };
   
   // Handle back to list view
   const handleBackToList = () => {
-    setViewMode("list");
+    setShowReplyDialog(false);
     setCurrentComment(null);
   };
   
-  // Reset to list view when tab changes
-  useEffect(() => {
-    setViewMode("list");
-    setCurrentComment(null);
-  }, [activeTab]);
+  // Render the platform filter dropdown
+  const renderPlatformFilter = () => (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Platform</label>
+      <Select 
+        value={filters.platform} 
+        onValueChange={(value) => handleFilterPlatform(value)}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="All platforms" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">All platforms</SelectItem>
+          {Object.entries(PLATFORMS).map(([id, name]) => (
+            <SelectItem key={id} value={id}>{name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
   
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header - only show in list view */}
-      {viewMode === "list" && (
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-        >
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Comment Management</h2>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              View and reply to comments across all your social media platforms.
-            </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold">Comment Management</h2>
+          <p className="text-muted-foreground text-sm">
+            View and respond to comments across your social media platforms
+          </p>
+        </div>
+      </div>
+
+      {!selectedComment ? (
+        <>
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search comments..."
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-10 w-10 sm:flex-shrink-0"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4" />
+            </Button>
           </div>
-        </motion.div>
-      )}
-      
-      {/* Tab content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-        {/* Only show tabs in list view */}
-        {viewMode === "list" && (
-          <TabsList className="grid grid-cols-4 mb-4">
-            <TabsTrigger value="all">All Comments</TabsTrigger>
-            <TabsTrigger value="admin">Admin Replies</TabsTrigger>
-            <TabsTrigger value="auto">Auto Replies</TabsTrigger>
-            <TabsTrigger value="fan">Fan Replies</TabsTrigger>
-          </TabsList>
-        )}
-        
-        <TabsContent value={activeTab} className="mt-0">
-          {viewMode === "list" ? (
-            <>
-              {/* Search and filter bar - Only in list view */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search comments..."
-                    className="pl-9"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  />
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleSearch}
-                  className="sm:flex-shrink-0"
+
+          {showFilters && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-md"
+            >
+              {renderPlatformFilter()}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Reply Type</label>
+                <Select 
+                  value={filters.replyType} 
+                  onValueChange={(value) => handleFilterReplyType(value)}
                 >
-                  Search
-                </Button>
-                <Select value={filters.platform} onValueChange={handleFilterPlatform}>
-                  <SelectTrigger className="w-full sm:w-[140px]">
-                    <SelectValue placeholder="Platform" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All reply types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Platforms</SelectItem>
-                    {Object.entries(platforms).map(([id, name]) => (
-                      <SelectItem key={id} value={id}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={filters.replyType} onValueChange={handleFilterReplyType}>
-                  <SelectTrigger className="w-full sm:w-[140px]">
-                    <SelectValue placeholder="Reply Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="">All reply types</SelectItem>
                     {replyTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              
-              {/* Active filters - Only in list view */}
-              <ActiveFilters 
-                filters={filters} 
-                onClearFilter={handleClearFilter} 
-                onClearAll={handleClearAllFilters} 
-              />
-              
-              {/* Loading state */}
-              {loading && (
-                <div className="flex items-center justify-center p-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              )}
-              
-              {/* Comments list or empty state */}
-              {!loading && (
-                <>
-                  {filteredComments.length > 0 ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">
-                          {filteredComments.length} comment{filteredComments.length !== 1 ? 's' : ''}
-                        </h3>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 gap-4">
-                        {filteredComments.map((comment) => (
-                          <div key={comment.id} className="group">
-                            <Card 
-                              className="w-full cursor-pointer transition-all hover:border-primary/50"
-                              onClick={() => handleViewComment(comment)}
+              <div className="sm:col-span-2 flex justify-end">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleClearAllFilters}
+                  className="mr-2"
+                >
+                  Clear Filters
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleSearch}
+                >
+                  Apply Filters
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          <ActiveFilters 
+            filters={filters} 
+            onClearFilter={handleClearFilter}
+            onClearAll={handleClearAllFilters}
+          />
+          
+          {/* Loading state */}
+          {loading && (
+            <div className="flex items-center justify-center p-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          )}
+          
+          {/* Comments list or empty state */}
+          {!loading && (
+            <>
+              {filteredComments.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">
+                      {filteredComments.length} comment{filteredComments.length !== 1 ? 's' : ''}
+                    </h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    {filteredComments.map((comment) => (
+                      <div key={comment.id} className="group">
+                        <Card 
+                          className="w-full cursor-pointer transition-all hover:border-primary/50"
+                          onClick={() => handleViewComment(comment)}
+                        >
+                          <CardHeader className="pb-2 flex flex-row justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">{PLATFORMS[comment.platform_id] || "Unknown"}</Badge>
+                                <Badge className={
+                                  `${replyTypes.find(type => type.value === comment.reply)?.color || "bg-gray-500"} text-white`
+                                }>
+                                  {replyTypes.find(type => type.value === comment.reply)?.label || comment.reply}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Comment ID: {comment.comment_id} • {new Date(comment.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pb-3">
+                            <p className="text-sm font-medium">{comment.content}</p>
+                          </CardContent>
+                          <CardFooter className="pt-0 flex justify-between">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReply(comment);
+                              }}
                             >
-                              <CardHeader className="pb-2 flex flex-row justify-between items-start">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline">{platforms[comment.platform_id] || "Unknown"}</Badge>
-                                    <Badge className={
-                                      `${replyTypes.find(type => type.value === comment.reply)?.color || "bg-gray-500"} text-white`
-                                    }>
-                                      {replyTypes.find(type => type.value === comment.reply)?.label || comment.reply}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Comment ID: {comment.comment_id} • {new Date(comment.created_at).toLocaleString()}
-                                  </p>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="pb-3">
-                                <p className="text-sm font-medium">{comment.content}</p>
-                              </CardContent>
-                              <CardFooter className="pt-0 flex justify-between">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleReply(comment);
-                                  }}
-                                >
-                                  <Send className="h-4 w-4 mr-1.5" />
-                                  Reply
-                                </Button>
-                              </CardFooter>
-                            </Card>
-                          </div>
-                        ))}
+                              <Send className="h-4 w-4 mr-1.5" />
+                              Reply
+                            </Button>
+                          </CardFooter>
+                        </Card>
                       </div>
-                    </div>
-                  ) : (
-                    <EmptyState />
-                  )}
-                </>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <EmptyState />
               )}
             </>
-          ) : (
-            // Comment details view
-            <CommentDetailsView 
-              comment={currentComment} 
-              onBack={handleBackToList}
-              onReply={handleReply}
-            />
           )}
-        </TabsContent>
-      </Tabs>
-      
-      {/* Reply dialog */}
+        </>
+      ) : (
+        <CommentDetailsView 
+          comment={selectedComment} 
+          onBack={handleBackToList}
+          onReply={handleReply}
+        />
+      )}
+
       <ReplyDialog
-        open={replyDialogOpen}
-        onOpenChange={setReplyDialogOpen}
-        comment={selectedComment}
+        open={showReplyDialog}
+        onOpenChange={setShowReplyDialog}
+        comment={currentComment}
         onSubmit={handleSubmitReply}
       />
     </div>
