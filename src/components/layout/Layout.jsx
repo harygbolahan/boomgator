@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo, useCallback, useMemo } from "react";
 import { useTheme } from "@/lib/ThemeContext";
 import { 
   LayoutDashboard, 
@@ -22,25 +22,38 @@ import {
   AlertCircle,
   MessageSquare,
   Clock,
-  Loader
+  Loader,
+  Bot,
+  CreditCard,
+  Instagram,
+  BookOpen,
+  Sparkles
 } from "lucide-react";
 import { PageNavigation } from "../PageNavigation";
 import { UserMenu } from "./UserMenu";
 
+// Memoize the nav items to prevent recreating the array on each render
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-  { name: "Social Hub", path: "/social-hub", icon: <Share2 className="w-5 h-5" /> },
+  // { name: "Social Hub", path: "/social-hub", icon: <Share2 className="w-5 h-5" /> },
   { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-5 h-5" /> },
+  { name: "AI Content Creator", path: "/ai-content-creator", icon: <Sparkles className="w-5 h-5" /> },
   { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" /> },
-  { name: "Schedule", path: "/calendar", icon: <Calendar className="w-5 h-5" /> },
-  { name: "Analytics", path: "/analytics", icon: <BarChart2 className="w-5 h-5" /> },
+  // { name: "Calendar", path: "/calendar", icon: <Calendar className="w-5 h-5" /> },
+  // { name: "Analytics", path: "/analytics", icon: <BarChart2 className="w-5 h-5" /> },
+  { name: "Instagram Viral Finder", path: "/instagram-viral-finder", icon: <Instagram className="w-5 h-5" /> },
   { name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" /> },
-  { name: "Account", path: "/account", icon: <UserCircle className="w-5 h-5" /> },
-  { name: "Support", path: "/support", icon: <LifeBuoy className="w-5 h-5" /> },
+  { name: "Messenger Broadcast", path: "/messenger-broadcast", icon: <MessageSquare className="w-5 h-5" /> },
+  // { name: "Notifications", path: "/notifications", icon: <Bell className="w-5 h-5" /> },
+  // { name: "Payment Plans", path: "/payment-plans", icon: <CreditCard className="w-5 h-5" /> },
+  // { name: "Setup Guide", path: "/setup-guide", icon: <BookOpen className="w-5 h-5" /> },
+  // { name: "Account", path: "/account", icon: <UserCircle className="w-5 h-5" /> },
+  // { name: "Support", path: "/support", icon: <LifeBuoy className="w-5 h-5" /> },
+  { name: "WhatsApp Bot", path: "/whatsapp-bot", icon: <Bot className="w-5 h-5" /> },
   { name: "Logout", path: "/logout", icon: <LogOut className="w-5 h-5" /> },
 ];
 
-// Fake notifications data
+// Fake notifications data - moved outside component to prevent recreation
 const notifications = [
   {
     id: 1,
@@ -80,7 +93,64 @@ const notifications = [
   }
 ];
 
-export function Layout() {
+// Memoized notification item component for better performance
+const NotificationItem = memo(({ notification, onMarkAsRead }) => {
+  const handleClick = useCallback(() => {
+    onMarkAsRead(notification.id);
+  }, [notification.id, onMarkAsRead]);
+
+  return (
+    <div 
+      onClick={handleClick}
+      className={`px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer ${
+        notification.read ? "opacity-70" : ""
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0">
+          {notification.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">
+            {notification.title}
+            {!notification.read && (
+              <span className="inline-block w-2 h-2 ml-2 bg-blue-500 rounded-full"></span>
+            )}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+            {notification.message}
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            {notification.time}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Memoized navigation item component
+const NavItem = memo(({ item, isActive, onClick }) => {
+  const handleClick = useCallback(() => {
+    onClick(item);
+  }, [item, onClick]);
+  
+  return (
+    <button
+      onClick={handleClick}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+        isActive 
+          ? `bg-indigo-900/40 text-indigo-400 dark:bg-indigo-900/40 dark:text-indigo-400 font-medium` 
+          : `text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white`
+      }`}
+    >
+      {item.icon}
+      <span>{item.name}</span>
+    </button>
+  );
+});
+
+function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useTheme();
@@ -90,63 +160,103 @@ export function Layout() {
   const [userNotifications, setUserNotifications] = useState(notifications);
   const [isPageLoading, setIsPageLoading] = useState(false);
   
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarCollapsed(prev => !prev);
+  }, []);
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
+  const toggleMobileMenu = useCallback(() => {
+    setMobileMenuOpen(prev => !prev);
+  }, []);
   
-  const toggleNotifications = () => {
-    setNotificationsOpen(!notificationsOpen);
-  };
+  const toggleNotifications = useCallback(() => {
+    setNotificationsOpen(prev => !prev);
+  }, []);
   
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("hasCompletedSetup");
     navigate("/login");
-  };
+  }, [navigate]);
 
-  const handleNavItemClick = (item) => {
+  const handleNavItemClick = useCallback((item) => {
     if (item.path === "/logout") {
       handleLogout();
     } else {
       navigate(item.path);
     }
     setMobileMenuOpen(false);
-  };
+  }, [navigate, handleLogout]);
   
-  const markAllAsRead = () => {
-    setUserNotifications(userNotifications.map(notification => ({
+  const markAllAsRead = useCallback(() => {
+    setUserNotifications(prev => prev.map(notification => ({
       ...notification,
       read: true
     })));
-  };
+  }, []);
   
-  const markAsRead = (id) => {
-    setUserNotifications(userNotifications.map(notification => 
+  const markAsRead = useCallback((id) => {
+    setUserNotifications(prev => prev.map(notification => 
       notification.id === id ? {...notification, read: true} : notification
     ));
-  };
+  }, []);
   
-  const unreadCount = userNotifications.filter(notification => !notification.read).length;
+  // Memoize unread count calculation
+  const unreadCount = useMemo(() => 
+    userNotifications.filter(notification => !notification.read).length,
+  [userNotifications]);
   
-  // Add loading state on route change
+  // Optimize page transition loading with a safer effect cleanup
   useEffect(() => {
-    setIsPageLoading(true);
-    const timer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, 500); // Show loader for at least 500ms for better UX
+    let isMounted = true;
     
-    return () => clearTimeout(timer);
+    if (isMounted) {
+      setIsPageLoading(true);
+    }
+    
+    // Reduced timeout from 500ms to 100ms for better responsiveness
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        setIsPageLoading(false);
+      }
+    }, 100);
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [location.pathname]);
+
+  // Memoize sidebar styles to avoid object recreation on every render
+  const mobileSidebarStyles = useMemo(() => ({
+    willChange: 'transform',
+    transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)',
+    transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'
+  }), [mobileMenuOpen]);
+
+  // Memoize desktop sidebar styles
+  const desktopSidebarStyles = useMemo(() => ({
+    willChange: 'width',
+    width: isSidebarCollapsed ? '5rem' : '18rem',
+    transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)'
+  }), [isSidebarCollapsed]);
+
+  // Memoize loader styles
+  const loaderStyles = useMemo(() => ({ 
+    transition: 'opacity 150ms ease-in-out',
+    opacity: isPageLoading ? 1 : 0,
+  }), [isPageLoading]);
+
+  // Memoize overlay styles
+  const overlayStyles = useMemo(() => ({ 
+    willChange: 'opacity',
+    transition: 'opacity 200ms ease' 
+  }), []);
 
   return (
     <div className="relative min-h-screen">
       {/* Page transition loader */}
       {isPageLoading && (
-        <div className="fixed inset-0 bg-white/80 dark:bg-gray-900/80 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-white/80 dark:bg-gray-900/80 z-50 flex items-center justify-center will-change-opacity" style={loaderStyles}>
           <div className="flex flex-col items-center gap-2">
             <Loader className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Loading...</p>
@@ -155,19 +265,21 @@ export function Layout() {
       )}
       
       <div className={`flex min-h-screen ${isDarkMode ? 'dark bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-        {/* Mobile menu overlay */}
+        {/* Mobile menu overlay - hardware accelerated with will-change */}
         {mobileMenuOpen && (
           <div 
             className="fixed inset-0 bg-gray-800 bg-opacity-75 backdrop-blur-sm z-40 md:hidden"
             onClick={() => setMobileMenuOpen(false)}
+            style={overlayStyles}
           />
         )}
         
-        {/* Sidebar - mobile */}
+        {/* Sidebar - mobile - hardware accelerated transform */}
         <aside 
-          className={`fixed inset-y-0 left-0 z-50 w-[80%] sm:w-72 transform transition-transform duration-300 ease-in-out md:hidden flex flex-col ${
-            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          } ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow-lg overflow-hidden`}
+          className={`fixed inset-y-0 left-0 z-50 w-[80%] sm:w-72 md:hidden flex flex-col ${
+            isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+          } shadow-lg overflow-hidden`}
+          style={mobileSidebarStyles}
         >
           <div className="flex flex-col h-full">
             <div className={`flex items-center justify-between p-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-b`}>
@@ -226,13 +338,12 @@ export function Layout() {
           </div>
         </aside>
         
-        {/* Sidebar - desktop */}
+        {/* Sidebar - desktop - hardware accelerated transitions */}
         <aside 
-          className={`${
-            isSidebarCollapsed ? 'w-20' : 'w-72'
-          } hidden md:block fixed h-screen ${
+          className={`hidden md:block fixed h-screen ${
             isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
           } border-r shadow-sm overflow-y-auto z-20 flex-shrink-0`}
+          style={desktopSidebarStyles}
         >
           <div className="flex flex-col h-full">
             <div className={`p-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-b flex justify-between items-center`}>
@@ -355,26 +466,11 @@ export function Layout() {
                       <p className={`p-4 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No new notifications</p>
                     ) : (
                       userNotifications.map((notification) => (
-                        <div 
+                        <NotificationItem 
                           key={notification.id} 
-                          className={`flex items-start p-3 gap-3 transition-colors ${notification.read ? '' : (isDarkMode ? 'bg-gray-700/50' : 'bg-blue-50')} ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-                        >
-                          <div className="flex-shrink-0 mt-1">{notification.icon}</div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{notification.title}</p>
-                            <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{notification.message}</p>
-                            <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{notification.time}</p>
-                          </div>
-                          {!notification.read && (
-                            <button 
-                              onClick={() => markAsRead(notification.id)}
-                              className="p-1 -m-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              aria-label="Mark as read"
-                            >
-                              <span className="block h-2 w-2 rounded-full bg-blue-500"></span>
-                            </button>
-                          )}
-                        </div>
+                          notification={notification}
+                          onMarkAsRead={markAsRead}
+                        />
                       ))
                     )}
                   </div>
@@ -413,4 +509,7 @@ export function Layout() {
       </div>
     </div>
   );
-} 
+}
+
+// Export using memo directly for optimal performance
+export default memo(Layout); 

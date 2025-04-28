@@ -12,6 +12,8 @@ export function PageNavigation() {
     { name: 'Analytics', path: '/analytics' },
     { name: 'Automation', path: '/automation' },
     { name: 'Calendar', path: '/calendar' },
+    { name: 'Social Hub', path: '/social-hub' },
+    { name: 'Content Scheduler', path: '/content-scheduler' },
     { name: 'Instagram Viral Finder', path: '/instagram-viral-finder' },
     { name: 'Integrations', path: '/integrations' },
     { name: 'Messenger Broadcast', path: '/messenger-broadcast' },
@@ -20,6 +22,7 @@ export function PageNavigation() {
     { name: 'Setup Guide', path: '/setup-guide' },
     { name: 'Support', path: '/support' },
     { name: 'WhatsApp Bot', path: '/whatsapp-bot' },
+    { name: 'Logout', path: '/logout' },
   ];
 
   return (

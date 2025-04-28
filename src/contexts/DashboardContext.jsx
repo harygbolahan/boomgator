@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useEffect, useReducer, useCallback, useMemo } from 'react';
 import { dashboardService, accountService } from '@/lib/api';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-toastify';
@@ -6,60 +6,89 @@ import { toast } from 'react-toastify';
 // Create the Dashboard Context
 const DashboardContext = createContext(null);
 
+// Define reducer actions
+const ACTIONS = {
+  FETCH_ACCOUNT_START: 'FETCH_ACCOUNT_START',
+  FETCH_ACCOUNT_SUCCESS: 'FETCH_ACCOUNT_SUCCESS',
+  FETCH_ACCOUNT_ERROR: 'FETCH_ACCOUNT_ERROR',
+  FETCH_HOME_START: 'FETCH_HOME_START',
+  FETCH_HOME_SUCCESS: 'FETCH_HOME_SUCCESS',
+  FETCH_HOME_ERROR: 'FETCH_HOME_ERROR',
+};
+
+// Initial state
+const initialState = {
+  accountData: null,
+  loadingAccount: false,
+  accountError: null,
+  homeData: null,
+  loadingHome: false,
+  homeError: null,
+};
+
+// Reducer function
+const dashboardReducer = (state, action) => {
+  switch (action.type) {
+    case ACTIONS.FETCH_ACCOUNT_START:
+      return { ...state, loadingAccount: true, accountError: null };
+    case ACTIONS.FETCH_ACCOUNT_SUCCESS:
+      return { ...state, accountData: action.payload, loadingAccount: false };
+    case ACTIONS.FETCH_ACCOUNT_ERROR:
+      return { ...state, accountError: action.payload, loadingAccount: false };
+    case ACTIONS.FETCH_HOME_START:
+      return { ...state, loadingHome: true, homeError: null };
+    case ACTIONS.FETCH_HOME_SUCCESS:
+      return { ...state, homeData: action.payload, loadingHome: false };
+    case ACTIONS.FETCH_HOME_ERROR:
+      return { ...state, homeError: action.payload, loadingHome: false };
+    default:
+      return state;
+  }
+};
+
 export const DashboardProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  const [state, dispatch] = useReducer(dashboardReducer, initialState);
   
-  // Account data
-  const [accountData, setAccountData] = useState(null);
-  const [loadingAccount, setLoadingAccount] = useState(false);
-  const [accountError, setAccountError] = useState(null);
-  
-  // Home dashboard data
-  const [homeData, setHomeData] = useState(null);
-  const [loadingHome, setLoadingHome] = useState(false);
-  const [homeError, setHomeError] = useState(null);
-  
-  // Loading state for the entire dashboard
-  const isLoading = loadingAccount || loadingHome;
-  
-  // Fetch account data
+  // Fetch account data with memoized callback
   const fetchAccountData = useCallback(async () => {
     if (!isAuthenticated) return;
     
-    console.log('Starting account data fetch...');
-    setLoadingAccount(true);
-    setAccountError(null);
+    dispatch({ type: ACTIONS.FETCH_ACCOUNT_START });
     
     try {
-      console.log('Calling accountService.getAccount()');
       const response = await accountService.getAccount();
-      console.log('Account data response:', response);
-      setAccountData(response);
+      dispatch({ 
+        type: ACTIONS.FETCH_ACCOUNT_SUCCESS, 
+        payload: response 
+      });
     } catch (error) {
-      console.error('Error fetching account data:', error);
-      setAccountError(error.message);
+      dispatch({ 
+        type: ACTIONS.FETCH_ACCOUNT_ERROR, 
+        payload: error.message 
+      });
       toast.error(`Error loading account data: ${error.message}`);
-    } finally {
-      console.log('Account data fetch completed');
-      setLoadingAccount(false);
     }
   }, [isAuthenticated]);
   
-  // Fetch home dashboard data
+  // Fetch home dashboard data with memoized callback
   const fetchHomeData = useCallback(async () => {
     if (!isAuthenticated) return;
     
-    setLoadingHome(true);
-    setHomeError(null);
+    dispatch({ type: ACTIONS.FETCH_HOME_START });
     
     try {
       const response = await dashboardService.getHomeData();
-      setHomeData(response);
+      dispatch({ 
+        type: ACTIONS.FETCH_HOME_SUCCESS, 
+        payload: response 
+      });
     } catch (error) {
-      setHomeError(error.message);
+      dispatch({ 
+        type: ACTIONS.FETCH_HOME_ERROR, 
+        payload: error.message 
+      });
       toast.error(`Error loading dashboard data: ${error.message}`);
-    } finally {
-      setLoadingHome(false);
     }
   }, [isAuthenticated]);
   
@@ -75,24 +104,20 @@ export const DashboardProvider = ({ children }) => {
       refreshDashboard();
     }
   }, [isAuthenticated, refreshDashboard]);
-  
-  const value = {
-    // Account data
-    accountData,
-    loadingAccount,
-    accountError,
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
+    ...state,
     fetchAccountData,
-    
-    // Home data
-    homeData,
-    loadingHome,
-    homeError,
     fetchHomeData,
-    
-    // Utilities
-    isLoading,
     refreshDashboard,
-  };
+    isLoading: state.loadingAccount || state.loadingHome,
+  }), [
+    state,
+    fetchAccountData,
+    fetchHomeData,
+    refreshDashboard
+  ]);
   
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 };

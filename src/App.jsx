@@ -1,5 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom"
-import { Layout } from "@/components/layout/Layout"
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import { AuthProvider, useAuth } from "@/contexts/AuthContext"
+import { DashboardProvider } from "@/contexts/DashboardContext"
+import ErrorBoundary from "@/components/ErrorBoundary"
+
+// Import components directly instead of using lazy loading
+import Layout from "@/components/layout/Layout"
 import { HomePage } from "@/pages/HomePage"
 import { Login } from "@/pages/auth/Login"
 import { Register } from "@/pages/auth/Register"
@@ -19,101 +26,108 @@ import { WhatsAppBotPage } from "@/pages/WhatsAppBotPage"
 import { PaymentPlansPage } from "@/pages/PaymentPlansPage"
 import { NotificationsPage } from "@/pages/NotificationsPage"
 import { ContentSchedulerPage } from "@/pages/ContentSchedulerPage"
+import { AIContentCreatorPage } from "@/pages/AIContentCreatorPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
-import { ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
-import { AuthProvider, useAuth } from "@/contexts/AuthContext"
-import { DashboardProvider } from "@/contexts/DashboardContext"
 
-// Protected route component
+// Protected route component with memoization
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  const location = useLocation();
+  const { isAuthenticated, loading } = useAuth()
+  const location = useLocation()
   
   // Show loading state while auth is initializing
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-8 w-8 animate-spin text-primary border-2 border-current border-t-transparent rounded-full"></div>
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
   }
   
   if (!isAuthenticated) {
     // Redirect to login page with return url
-    return <Navigate to="/auth/login" state={{ from: location }} replace />;
+    return <Navigate to="/auth/login" state={{ from: location }} replace />
   }
   
-  return children;
-};
+  return children
+}
 
 function App() {
   return (
-    <AuthProvider>
-      <DashboardProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <DashboardProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              
+              {/* Auth Routes */}
+              <Route path="/auth">
+                <Route path="login" element={<Login />} />
+                <Route path="register" element={<Register />} />
+                <Route path="forgot-password" element={<ForgotPassword />} />
+              </Route>
+              
+              {/* Redirect old routes to new auth routes */}
+              <Route path="/login" element={<Navigate to="/auth/login" replace />} />
+              <Route path="/signup" element={<Navigate to="/auth/register" replace />} />
+              
+              {/* Setup Guide Route */}
+              <Route path="/setup-guide" element={
+                <ProtectedRoute>
+                  <SetupGuidePage />
+                </ProtectedRoute>
+              } />
+              
+              {/* Protected routes */}
+              <Route element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/automation" element={<AutomationPage />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/integrations" element={<IntegrationsPage />} />
+                <Route path="/social-hub" element={<SocialHubPage />} />
+                <Route path="/content-scheduler" element={<ContentSchedulerPage />} />
+                <Route path="/ai-content-creator" element={<AIContentCreatorPage />} />
+                <Route path="/instagram-viral-finder" element={<InstagramViralFinderPage />} />
+                <Route path="/messenger-broadcast" element={<MessengerBroadcastPage />} />
+                <Route path="/whatsapp-bot" element={<WhatsAppBotPage />} />
+                <Route path="/payment-plans" element={<PaymentPlansPage />} />
+                <Route path="/account" element={<AccountPage />} />
+                <Route path="/support" element={<SupportPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+              </Route>
+              
+              {/* 404 Not Found */}
+              <Route path="*" element={
+                <ProtectedRoute>
+                  <NotFoundPage />
+                </ProtectedRoute>
+              } />
+            </Routes>
             
-            {/* Auth Routes */}
-            <Route path="/auth">
-              <Route path="login" element={<Login />} />
-              <Route path="register" element={<Register />} />
-              <Route path="forgot-password" element={<ForgotPassword />} />
-            </Route>
-            
-            {/* Redirect old routes to new auth routes */}
-            <Route path="/login" element={<Navigate to="/auth/login" replace />} />
-            <Route path="/signup" element={<Navigate to="/auth/register" replace />} />
-            
-            {/* Setup Guide Route */}
-            <Route path="/setup-guide" element={
-              <ProtectedRoute>
-                <SetupGuidePage />
-              </ProtectedRoute>
-            } />
-            
-            {/* Protected routes */}
-            <Route element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/automation" element={<AutomationPage />} />
-              <Route path="/calendar" element={<CalendarPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/integrations" element={<IntegrationsPage />} />
-              <Route path="/social-hub" element={<SocialHubPage />} />
-              <Route path="/content-scheduler" element={<ContentSchedulerPage />} />
-              <Route path="/instagram-viral-finder" element={<InstagramViralFinderPage />} />
-              <Route path="/messenger-broadcast" element={<MessengerBroadcastPage />} />
-              <Route path="/whatsapp-bot" element={<WhatsAppBotPage />} />
-              <Route path="/payment-plans" element={<PaymentPlansPage />} />
-              <Route path="/account" element={<AccountPage />} />
-              <Route path="/support" element={<SupportPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-            </Route>
-            
-            {/* 404 Not Found */}
-            <Route path="*" element={
-              <ProtectedRoute>
-                <NotFoundPage />
-              </ProtectedRoute>
-            } />
-          </Routes>
-          
-          <ToastContainer 
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
-        </BrowserRouter>
-      </DashboardProvider>
-    </AuthProvider>
+            <ToastContainer 
+              position="top-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+          </BrowserRouter>
+        </DashboardProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 
