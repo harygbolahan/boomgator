@@ -2,12 +2,50 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 /**
- * Combines multiple class names and resolves Tailwind CSS conflicts
- * @param {...string} inputs - Class names to combine
- * @returns {string} - Combined class string
+ * Combines class names using clsx and tailwind-merge
+ * @param {string} inputs - Class names to combine
+ * @returns {string} - Combined class names
  */
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Format a date to a readable string
+ * @param {Date|string} date - Date to format
+ * @param {Object} options - Format options
+ * @returns {string} - Formatted date string
+ */
+export function formatDate(date, options = {}) {
+  const defaultOptions = { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  };
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toLocaleString(undefined, { ...defaultOptions, ...options });
+}
+
+/**
+ * Truncate text to a specific length
+ * @param {string} text - Text to truncate
+ * @param {number} length - Max length
+ * @returns {string} - Truncated text
+ */
+export function truncateText(text, length = 100) {
+  if (!text || text.length <= length) return text;
+  return text.slice(0, length) + '...';
+}
+
+/**
+ * Generate a random ID
+ * @returns {string} - Random ID
+ */
+export function generateId() {
+  return Math.random().toString(36).substring(2, 9);
 }
 
 // Utility functions for performance optimization

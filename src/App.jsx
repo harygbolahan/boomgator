@@ -28,6 +28,7 @@ import { NotificationsPage } from "@/pages/NotificationsPage"
 import { ContentSchedulerPage } from "@/pages/ContentSchedulerPage"
 import { AIContentCreatorPage } from "@/pages/AIContentCreatorPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
+import Enhancements from "@/pages/Enhancements"
 
 // Protected route component with memoization
 const ProtectedRoute = ({ children }) => {
@@ -102,14 +103,11 @@ function App() {
                 <Route path="/account" element={<AccountPage />} />
                 <Route path="/support" element={<SupportPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/enhancements" element={<Enhancements />} />
               </Route>
               
               {/* 404 Not Found */}
-              <Route path="*" element={
-                <ProtectedRoute>
-                  <NotFoundPage />
-                </ProtectedRoute>
-              } />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
             
             <ToastContainer 

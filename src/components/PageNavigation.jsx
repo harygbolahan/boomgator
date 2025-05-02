@@ -14,6 +14,7 @@ export function PageNavigation() {
     { name: 'Calendar', path: '/calendar' },
     { name: 'Social Hub', path: '/social-hub' },
     { name: 'Content Scheduler', path: '/content-scheduler' },
+    { name: 'Enhancements', path: '/enhancements' },
     { name: 'Instagram Viral Finder', path: '/instagram-viral-finder' },
     { name: 'Integrations', path: '/integrations' },
     { name: 'Messenger Broadcast', path: '/messenger-broadcast' },

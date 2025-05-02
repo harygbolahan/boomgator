@@ -16,19 +16,21 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { XCircle, Save, Plus, Zap, Filter, CheckCircle, Info, AlertTriangle } from "lucide-react";
+import { XCircle, Save, Plus, Zap, Filter, CheckCircle, Info, AlertTriangle, MessageCircle, Mail } from "lucide-react";
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Custom node types
 import TriggerNode from './nodes/TriggerNode';
 import ConditionNode from './nodes/ConditionNode';
 import ActionNode from './nodes/ActionNode';
+import CommentAutomationNode from './nodes/CommentAutomationNode';
 
 // Node types definition
 const nodeTypes = {
   triggerNode: TriggerNode,
   conditionNode: ConditionNode,
   actionNode: ActionNode,
+  commentAutomationNode: CommentAutomationNode,
 };
 
 export function AutomationFlowBuilder({ onSave, initialData }) {
@@ -486,6 +488,29 @@ function NodeSelector({ onDragStart }) {
               <span className="text-sm font-medium">Action</span>
             </div>
           </div>
+          <div
+            className="border p-2 rounded-md cursor-move bg-violet-50 hover:bg-violet-100 transition-colors"
+            draggable
+            onDragStart={(e) =>
+              onDragStart(e, 'commentAutomationNode', {
+                nodeType: 'commentAutomation',
+                label: 'Comment Automation',
+                platform: 'Both',
+                contentType: 'Post',
+                timing: 'Immediate',
+                commentTemplate: 'Thanks for your post! We appreciate your content.',
+                useDynamicValues: true,
+                description: 'Automated comment response',
+              })
+            }
+          >
+            <div className="flex items-center gap-2">
+              <div className="bg-violet-100 p-1 rounded-full">
+                <MessageCircle className="h-4 w-4 text-violet-600" />
+              </div>
+              <span className="text-sm font-medium">Comment Automation</span>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -671,6 +696,131 @@ function NodeProperties({ node, onChange, onClose }) {
                 onChange={(e) => onChange({ description: e.target.value })}
                 className="mt-1"
                 placeholder="Describe this action"
+              />
+            </div>
+          </div>
+        );
+
+      case 'commentAutomationNode':
+        return (
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="node-label">Label</Label>
+              <Input
+                id="node-label"
+                value={node.data.label || ''}
+                onChange={(e) => onChange({ label: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="platform">Platform</Label>
+              <select
+                id="platform"
+                value={node.data.platform || 'Both'}
+                onChange={(e) => onChange({ platform: e.target.value })}
+                className="w-full p-2 mt-1 border rounded-lg"
+              >
+                <option value="Both">Both</option>
+                <option value="Facebook">Facebook</option>
+                <option value="Instagram">Instagram</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="content-type">Content Type</Label>
+              <select
+                id="content-type"
+                value={node.data.contentType || 'Post'}
+                onChange={(e) => onChange({ contentType: e.target.value })}
+                className="w-full p-2 mt-1 border rounded-lg"
+              >
+                <option value="Post">Post</option>
+                <option value="Ad">Ad</option>
+                <option value="Video">Video</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="timing">Timing</Label>
+              <select
+                id="timing"
+                value={node.data.timing || 'Immediate'}
+                onChange={(e) => onChange({ timing: e.target.value })}
+                className="w-full p-2 mt-1 border rounded-lg"
+              >
+                <option value="Immediate">Immediate</option>
+                <option value="5 Minutes">5 Minutes</option>
+                <option value="15 Minutes">15 Minutes</option>
+                <option value="30 Minutes">30 Minutes</option>
+                <option value="1 Hour">1 Hour</option>
+                <option value="Custom">Custom</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="targeting">Targeting</Label>
+              <select
+                id="targeting"
+                value={node.data.targeting || ''}
+                onChange={(e) => onChange({ targeting: e.target.value })}
+                className="w-full p-2 mt-1 border rounded-lg"
+              >
+                <option value="">None</option>
+                <option value="Specific Hashtags">Specific Hashtags</option>
+                <option value="Keywords in Post">Keywords in Post</option>
+                <option value="User Mentions">User Mentions</option>
+                <option value="Campaign Posts">Campaign Posts</option>
+              </select>
+            </div>
+            {node.data.targeting === 'Specific Hashtags' && (
+              <div>
+                <Label htmlFor="hashtags">Hashtags (comma separated)</Label>
+                <Input
+                  id="hashtags"
+                  value={node.data.hashtags || ''}
+                  onChange={(e) => onChange({ hashtags: e.target.value })}
+                  className="mt-1"
+                  placeholder="product,launch,sale"
+                />
+              </div>
+            )}
+            <div>
+              <Label htmlFor="comment-template">Comment Template</Label>
+              <textarea
+                id="comment-template"
+                value={node.data.commentTemplate || ''}
+                onChange={(e) => onChange({ commentTemplate: e.target.value })}
+                className="w-full p-2 mt-1 border rounded-lg"
+                rows="3"
+                placeholder="Thanks for your post! We appreciate your content."
+              ></textarea>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="use-dynamic-values"
+                checked={node.data.useDynamicValues || false}
+                onChange={(e) => onChange({ useDynamicValues: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="use-dynamic-values">Use dynamic values</Label>
+            </div>
+            {node.data.useDynamicValues && (
+              <div className="p-2 bg-violet-50 rounded-md text-xs">
+                <p className="text-violet-700 mb-2">Available Variables:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>{{user}} - User name</li>
+                  <li>{{post_text}} - Post content</li>
+                  <li>{{time}} - Current time</li>
+                </ul>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={node.data.description || ''}
+                onChange={(e) => onChange({ description: e.target.value })}
+                className="mt-1"
+                placeholder="Describe this automation"
               />
             </div>
           </div>
