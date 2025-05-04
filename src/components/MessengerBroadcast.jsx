@@ -479,132 +479,76 @@ export function MessengerBroadcast({ onBroadcastSend }) {
   
   return (
     <div>
-      <Tabs 
-        defaultValue="compose" 
-        value={activeTab} 
-        onValueChange={handleTabChange}
-        className="w-full"
-      >
-        <TabsList className="mb-6">
-          <TabsTrigger value="compose" className="flex items-center gap-1">
-            <Send className="w-4 h-4" />
-            <span>Compose Broadcast</span>
-          </TabsTrigger>
-          <TabsTrigger value="audience" className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
-            <span>Audience</span>
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            <span>Broadcast History</span>
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="compose" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Compose Broadcast Message</CardTitle>
-              <CardDescription>
-                Create a message to send to your Facebook Messenger subscribers.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {sendSuccess ? (
-                <div className="bg-green-50 p-6 rounded-md text-center">
-                  <Check className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                  <h3 className="text-lg font-medium mb-1">Broadcast {isScheduled ? 'Scheduled' : 'Sent'} Successfully!</h3>
-                  <p className="text-green-700">
-                    {isScheduled 
-                      ? `Your broadcast has been scheduled for ${format(scheduledDate, "MMMM d, yyyy")} at ${scheduledTime}.` 
-                      : 'Your broadcast has been sent to your subscribers.'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <BroadcastForm 
-                    messageText={messageText}
-                    setMessageText={setMessageText}
-                    messageTitle={messageTitle}
-                    setMessageTitle={setMessageTitle}
-                    includeImage={includeImage}
-                    setIncludeImage={setIncludeImage}
-                    imageUrl={imageUrl}
-                    setImageUrl={setImageUrl}
-                    includeButton={includeButton}
-                    setIncludeButton={setIncludeButton}
-                    buttonText={buttonText}
-                    setButtonText={setButtonText}
-                    buttonUrl={buttonUrl}
-                    setButtonUrl={setButtonUrl}
-                    error={error}
-                  />
-                  
-                  <ScheduleSettings 
-                    isScheduled={isScheduled}
-                    setIsScheduled={setIsScheduled}
-                    scheduledDate={scheduledDate}
-                    setScheduledDate={setScheduledDate}
-                    scheduledTime={scheduledTime}
-                    setScheduledTime={setScheduledTime}
-                  />
-                  
-                  <div className="flex justify-end pt-4">
-                    <Button 
-                      onClick={handleSendBroadcast} 
-                      disabled={isSending}
-                      className="relative"
-                    >
-                      {isSending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          <span>{isScheduled ? 'Scheduling...' : 'Sending...'}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" />
-                          <span>{isScheduled ? 'Schedule' : 'Send'} Broadcast</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="audience" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Audience</CardTitle>
-              <CardDescription>
-                Choose which subscribers will receive your broadcast message.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AudienceSelector 
-                audienceSegment={audienceSegment}
-                setAudienceSegment={setAudienceSegment}
-                audienceSegments={audienceSegments}
+      <Card>
+        <CardHeader>
+          <CardTitle>Compose Broadcast Message</CardTitle>
+          <CardDescription>
+            Create a message to send to your Facebook Messenger subscribers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {sendSuccess ? (
+            <div className="bg-green-50 p-6 rounded-md text-center">
+              <Check className="w-12 h-12 text-green-600 mx-auto mb-2" />
+              <h3 className="text-lg font-medium mb-1">Broadcast {isScheduled ? 'Scheduled' : 'Sent'} Successfully!</h3>
+              <p className="text-green-700">
+                {isScheduled 
+                  ? `Your broadcast has been scheduled for ${format(scheduledDate, "MMMM d, yyyy")} at ${scheduledTime}.` 
+                  : 'Your broadcast has been sent to your subscribers.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              <BroadcastForm 
+                messageText={messageText}
+                setMessageText={setMessageText}
+                messageTitle={messageTitle}
+                setMessageTitle={setMessageTitle}
+                includeImage={includeImage}
+                setIncludeImage={setIncludeImage}
+                imageUrl={imageUrl}
+                setImageUrl={setImageUrl}
+                includeButton={includeButton}
+                setIncludeButton={setIncludeButton}
+                buttonText={buttonText}
+                setButtonText={setButtonText}
+                buttonUrl={buttonUrl}
+                setButtonUrl={setButtonUrl}
+                error={error}
               />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="history" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Broadcast History</CardTitle>
-              <CardDescription>
-                View your recent and scheduled broadcasts.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <BroadcastHistory broadcasts={broadcasts} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              
+              <ScheduleSettings 
+                isScheduled={isScheduled}
+                setIsScheduled={setIsScheduled}
+                scheduledDate={scheduledDate}
+                setScheduledDate={setScheduledDate}
+                scheduledTime={scheduledTime}
+                setScheduledTime={setScheduledTime}
+              />
+              
+              <div className="flex justify-end pt-4">
+                <Button 
+                  onClick={handleSendBroadcast} 
+                  disabled={isSending}
+                  className="relative"
+                >
+                  {isSending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <span>{isScheduled ? 'Scheduling...' : 'Sending...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      <span>{isScheduled ? 'Schedule' : 'Send'} Broadcast</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

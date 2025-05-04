@@ -29,6 +29,10 @@ import { ContentSchedulerPage } from "@/pages/ContentSchedulerPage"
 import { AIContentCreatorPage } from "@/pages/AIContentCreatorPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import Enhancements from "@/pages/Enhancements"
+import CommentAutomationPage from "@/pages/CommentAutomationPage"
+import LiveChatPage from "@/pages/LiveChatPage"
+import AdCommentsPage from "@/pages/AdCommentsPage"
+import CaptionGeneratorPage from "@/pages/CaptionGeneratorPage"
 
 // Protected route component with memoization
 const ProtectedRoute = ({ children }) => {
@@ -104,6 +108,12 @@ function App() {
                 <Route path="/support" element={<SupportPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/enhancements" element={<Enhancements />} />
+                
+                {/* New Enhancement Pages */}
+                <Route path="/comment-automation" element={<CommentAutomationPage />} />
+                <Route path="/live-chat" element={<LiveChatPage />} />
+                <Route path="/ad-comments" element={<AdCommentsPage />} />
+                <Route path="/caption-generator" element={<CaptionGeneratorPage />} />
               </Route>
               
               {/* 404 Not Found */}

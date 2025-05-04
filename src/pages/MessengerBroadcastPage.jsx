@@ -139,7 +139,7 @@ export function MessengerBroadcastPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className={`flex items-center gap-2 rounded-full ${broadcastSubTab === 'compose' ? 'bg-black text-white hover:bg-black' : ''}`}
+                    className={`flex items-center gap-2 rounded-full ${broadcastSubTab === 'compose' ? 'bg-black text-white hover:bg-black hover:text-white' : ''}`}
                     onClick={() => setBroadcastSubTab("compose")}
                   >
                     <Send className="w-4 h-4" />
@@ -148,7 +148,7 @@ export function MessengerBroadcastPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className={`flex items-center gap-2 rounded-full ${broadcastSubTab === 'audience' ? 'bg-black text-white hover:bg-black' : ''}`}
+                    className={`flex items-center gap-2 rounded-full ${broadcastSubTab === 'audience' ? 'bg-black text-white hover:bg-black hover:text-white' : ''}`}
                     onClick={() => setBroadcastSubTab("audience")}
                   >
                     <Users className="w-4 h-4" />
@@ -157,7 +157,7 @@ export function MessengerBroadcastPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className={`flex items-center gap-2 rounded-full ${broadcastSubTab === 'schedule' ? 'bg-black text-white hover:bg-black' : ''}`}
+                    className={`flex items-center gap-2 rounded-full ${broadcastSubTab === 'schedule' ? 'bg-black text-white hover:bg-black hover:text-white' : ''}`}
                     onClick={() => setBroadcastSubTab("schedule")}
                   >
                     <Calendar className="w-4 h-4" />
@@ -166,7 +166,7 @@ export function MessengerBroadcastPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className={`flex items-center gap-2 rounded-full ${broadcastSubTab === 'history' ? 'bg-black text-white hover:bg-black' : ''}`}
+                    className={`flex items-center gap-2 rounded-full ${broadcastSubTab === 'history' ? 'bg-black text-white hover:bg-black hover:text-white' : ''}`}
                     onClick={() => setBroadcastSubTab("history")}
                   >
                     <History className="w-4 h-4" />

@@ -44,6 +44,7 @@ const navItems = [
   { name: "Instagram Viral Finder", path: "/instagram-viral-finder", icon: <Instagram className="w-5 h-5" /> },
   { name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" /> },
   { name: "Messenger Broadcast", path: "/messenger-broadcast", icon: <MessageSquare className="w-5 h-5" /> },
+  { name: "Enhancements", path: "/enhancements", icon: <Sparkles className="w-5 h-5" /> },
   // { name: "Notifications", path: "/notifications", icon: <Bell className="w-5 h-5" /> },
   // { name: "Payment Plans", path: "/payment-plans", icon: <CreditCard className="w-5 h-5" /> },
   // { name: "Setup Guide", path: "/setup-guide", icon: <BookOpen className="w-5 h-5" /> },

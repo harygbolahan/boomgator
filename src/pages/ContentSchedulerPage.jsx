@@ -32,13 +32,15 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { Calendar, Clock, Image, Video, AlertCircle, Check, X, RefreshCw, ChevronRight, Copy } from "lucide-react";
+import { Calendar, Clock, Image, Video, AlertCircle, Check, X, RefreshCw, ChevronRight, Copy, Eye } from "lucide-react";
 
 const platformOptions = [
   { id: 1, name: "Facebook" },
   { id: 2, name: "Instagram" },
   { id: 3, name: "Twitter" },
+  { id: 4, name: "LinkedIn" },
 ];
 
 const statusColors = {
@@ -65,12 +67,13 @@ export const ContentSchedulerPage = () => {
     scheduled_date: "",
     platform_id: "",
     status: "Scheduled",
-    image_path: null,
-    video_path: null,
+    media: [],
+    preview: false
   });
   const [selectedTab, setSelectedTab] = useState("All");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   // Fetch scheduled posts on component mount
   useEffect(() => {
@@ -135,6 +138,54 @@ export const ContentSchedulerPage = () => {
     }));
   };
 
+  // Handle file upload
+  const handleFileUpload = (event) => {
+    const files = Array.from(event.target.files);
+    
+    // Create preview URLs for each file
+    const newMedia = files.map(file => ({
+      file,
+      type: file.type.startsWith('image/') ? 'image' : 'video',
+      url: URL.createObjectURL(file),
+      name: file.name
+    }));
+    
+    setFormData(prev => ({
+      ...prev,
+      media: [...prev.media, ...newMedia]
+    }));
+  };
+  
+  // Remove media from the list
+  const removeMedia = (indexToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      media: prev.media.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+  
+  // Toggle preview mode
+  const togglePreview = () => {
+    setFormData(prev => ({
+      ...prev,
+      preview: !prev.preview
+    }));
+  };
+
+  // Toggle preview modal
+  const openPreviewModal = () => {
+    if (!formData.platform_id) {
+      toast.error("Please select a platform to preview");
+      return;
+    }
+    setIsPreviewModalOpen(true);
+  };
+
+  // Close preview modal
+  const closePreviewModal = () => {
+    setIsPreviewModalOpen(false);
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -161,14 +212,33 @@ export const ContentSchedulerPage = () => {
       // Combine date and time fields
       const scheduledDateTime = `${formData.scheduled_date} ${formData.scheduled_time}:00`;
       
+      // Organize media files
+      let image_path = null;
+      let video_path = null;
+      
+      // In a real implementation, we would upload these files to a server
+      // Here we're just setting the paths as if they were uploaded
+      if (formData.media.length > 0) {
+        // Process media files (in a real app, you'd upload them to a server)
+        formData.media.forEach(media => {
+          if (media.type === 'image') {
+            // In a real implementation, this would be the URL returned from server
+            image_path = media.name; 
+          } else if (media.type === 'video') {
+            // In a real implementation, this would be the URL returned from server
+            video_path = media.name;
+          }
+        });
+      }
+      
       // Prepare submission data
       const submissionData = {
         content: formData.content,
         scheduled_time: scheduledDateTime,
         status: formData.status,
         platform_id: parseInt(formData.platform_id),
-        image_path: formData.image_path,
-        video_path: formData.video_path,
+        image_path: image_path,
+        video_path: video_path,
       };
       
       // Submit the form data
@@ -184,8 +254,8 @@ export const ContentSchedulerPage = () => {
         scheduled_date: "",
         platform_id: "",
         status: "Scheduled",
-        image_path: null,
-        video_path: null,
+        media: [],
+        preview: false
       });
       
       // Refresh posts list
@@ -262,7 +332,20 @@ export const ContentSchedulerPage = () => {
                   <SelectContent>
                     {platformOptions.map((platform) => (
                       <SelectItem key={platform.id} value={platform.id.toString()}>
-                        {platform.name}
+                        <div className="flex items-center">
+                          <span className={`mr-2 ${
+                            platform.name === 'Facebook' ? 'text-blue-600' : 
+                            platform.name === 'Instagram' ? 'text-pink-600' : 
+                            platform.name === 'Twitter' ? 'text-blue-400' : 
+                            platform.name === 'LinkedIn' ? 'text-blue-700' : ''
+                          }`}>
+                            {platform.name === 'Facebook' && <span className="text-lg">ⓕ</span>}
+                            {platform.name === 'Instagram' && <span className="text-lg">📷</span>}
+                            {platform.name === 'Twitter' && <span className="text-lg">𝕏</span>}
+                            {platform.name === 'LinkedIn' && <span className="text-lg">in</span>}
+                          </span>
+                          {platform.name}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -297,10 +380,260 @@ export const ContentSchedulerPage = () => {
               </div>
             </div>
             
-            {/* Note: In a real implementation, add file upload functionality for images/videos */}
+            {/* Media Upload Section */}
+            <div className="space-y-2">
+              <Label className="text-base font-medium">Media</Label>
+              <div className="border-2 border-dashed rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                {formData.media && formData.media.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {formData.media.map((item, index) => (
+                      <div key={index} className="relative group">
+                        {item.type === 'image' ? (
+                          <img 
+                            src={item.url} 
+                            alt={item.name}
+                            className="h-24 w-full object-cover rounded-md"
+                          />
+                        ) : (
+                          <div className="h-24 w-full bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center">
+                            <Video className="w-8 h-8 text-gray-500" />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeMedia(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <p className="text-xs mt-1 truncate">{item.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Image className="mx-auto h-10 w-10 text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">Upload images or videos</p>
+                  </div>
+                )}
+                <div className="mt-4 flex justify-center">
+                  <label htmlFor="media-upload" className="cursor-pointer">
+                    <div className="bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-4 py-2 rounded-md flex items-center hover:bg-blue-100 transition-colors">
+                      <Image className="w-4 h-4 mr-2" />
+                      <span>Upload Media</span>
+                    </div>
+                    <input
+                      id="media-upload"
+                      type="file"
+                      multiple
+                      accept="image/*,video/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Preview Section */}
+            {formData.platform_id && formData.preview && (
+              <div className="mt-6 border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium text-lg">Preview</h3>
+                </div>
+                
+                {formData.platform_id === "1" && (
+                  <div className="border rounded-lg overflow-hidden bg-white">
+                    <div className="p-3 border-b flex items-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
+                        <span className="text-xl font-bold">ⓕ</span>
+                      </div>
+                      <div>
+                        <p className="font-medium">Your Page</p>
+                        <p className="text-xs text-gray-500">
+                          {formData.scheduled_date && formData.scheduled_time 
+                            ? `Scheduled for ${formData.scheduled_date} at ${formData.scheduled_time}`
+                            : "Just now"
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <p className="whitespace-pre-wrap mb-3">{formData.content || "Your post content will appear here"}</p>
+                      {formData.media && formData.media.length > 0 && (
+                        <div className={`grid ${formData.media.length > 1 ? 'grid-cols-2 gap-1' : 'grid-cols-1'}`}>
+                          {formData.media.map((item, index) => (
+                            <div key={index} className="aspect-video bg-gray-100 rounded overflow-hidden">
+                              {item.type === 'image' ? (
+                                <img src={item.url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                  <Video className="w-8 h-8 text-gray-500" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 border-t flex justify-around">
+                      <button className="text-gray-600 flex items-center text-sm">
+                        <span className="mr-1">👍</span> Like
+                      </button>
+                      <button className="text-gray-600 flex items-center text-sm">
+                        <span className="mr-1">💬</span> Comment
+                      </button>
+                      <button className="text-gray-600 flex items-center text-sm">
+                        <span className="mr-1">↗️</span> Share
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {formData.platform_id === "2" && (
+                  <div className="border rounded-lg overflow-hidden bg-white max-w-md mx-auto">
+                    <div className="p-3 border-b flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 flex items-center justify-center text-white mr-3">
+                        <span className="text-xs">📷</span>
+                      </div>
+                      <div className="flex-grow">
+                        <p className="font-medium text-sm">your_instagram</p>
+                      </div>
+                      <button className="text-gray-500">•••</button>
+                    </div>
+                    
+                    {formData.media && formData.media.length > 0 ? (
+                      <div className="aspect-square bg-black">
+                        {formData.media[0].type === 'image' ? (
+                          <img src={formData.media[0].url} alt="" className="w-full h-full object-contain" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                            <Video className="w-12 h-12 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="aspect-square bg-gray-100 flex items-center justify-center">
+                        <p className="text-gray-400">No media to display</p>
+                      </div>
+                    )}
+                    
+                    <div className="p-3">
+                      <div className="flex justify-between mb-2">
+                        <div className="flex space-x-4">
+                          <span>❤️</span>
+                          <span>💬</span>
+                          <span>↗️</span>
+                        </div>
+                        <span>🔖</span>
+                      </div>
+                      <p className="text-sm mb-1"><strong>your_instagram</strong> {formData.content || "Your caption will appear here"}</p>
+                      <p className="text-xs text-gray-500">
+                        {formData.scheduled_date 
+                          ? `Will be posted on ${formData.scheduled_date}`
+                          : "Just now"
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {formData.platform_id === "3" && (
+                  <div className="border rounded-lg overflow-hidden bg-white">
+                    <div className="p-3 flex">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-400 mr-3">
+                        <span className="text-xl font-bold">𝕏</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center">
+                          <p className="font-medium">Your Name</p>
+                          <p className="text-gray-500 text-sm ml-1">@your_handle</p>
+                        </div>
+                        <p className="whitespace-pre-wrap mt-1">{formData.content || "Your tweet will appear here"}</p>
+                        
+                        {formData.media && formData.media.length > 0 && (
+                          <div className="mt-2 rounded-lg overflow-hidden border">
+                            {formData.media[0].type === 'image' ? (
+                              <img src={formData.media[0].url} alt="" className="w-full max-h-80 object-cover" />
+                            ) : (
+                              <div className="w-full h-60 flex items-center justify-center bg-gray-100">
+                                <Video className="w-10 h-10 text-gray-500" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className="mt-3 flex space-x-8 text-gray-500 text-sm">
+                          <span>💬 0</span>
+                          <span>🔁 0</span>
+                          <span>❤️ 0</span>
+                          <span>📊 0</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {formData.platform_id === "4" && (
+                  <div className="border rounded-lg overflow-hidden bg-white">
+                    <div className="p-3 border-b flex items-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 mr-3">
+                        <span className="text-xl font-bold">in</span>
+                      </div>
+                      <div>
+                        <p className="font-medium">Your Name</p>
+                        <p className="text-xs text-gray-500">
+                          Your Title • {formData.scheduled_date 
+                            ? `Scheduled for ${formData.scheduled_date}`
+                            : "Just now"
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <p className="whitespace-pre-wrap mb-3">{formData.content || "Your post content will appear here"}</p>
+                      {formData.media && formData.media.length > 0 && (
+                        <div className="rounded overflow-hidden border">
+                          {formData.media[0].type === 'image' ? (
+                            <img src={formData.media[0].url} alt="" className="w-full max-h-80 object-cover" />
+                          ) : (
+                            <div className="w-full h-60 flex items-center justify-center bg-gray-100">
+                              <Video className="w-10 h-10 text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 border-t flex justify-around">
+                      <button className="text-gray-600 flex items-center text-sm">
+                        <span className="mr-1">👍</span> Like
+                      </button>
+                      <button className="text-gray-600 flex items-center text-sm">
+                        <span className="mr-1">💬</span> Comment
+                      </button>
+                      <button className="text-gray-600 flex items-center text-sm">
+                        <span className="mr-1">↗️</span> Share
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="text-xs text-gray-500 mt-2 text-center">
+                  This is a preview and may differ slightly from the actual post appearance
+                </div>
+              </div>
+            )}
           </form>
         </CardContent>
-        <CardFooter className="bg-gray-50 dark:bg-gray-800 flex justify-end">
+        <CardFooter className="bg-gray-50 dark:bg-gray-800 flex justify-between">
+          <Button
+            variant="outline"
+            onClick={openPreviewModal}
+            className="flex items-center gap-2"
+          >
+            <Eye className="w-4 h-4 mr-1" />
+            Preview Post
+          </Button>
           <Button 
             onClick={handleSubmit} 
             disabled={submitLoading}
@@ -561,6 +894,214 @@ export const ContentSchedulerPage = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Preview Post Dialog */}
+      <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Post Preview</DialogTitle>
+            <DialogDescription>
+              Preview how your post will look on {
+                formData.platform_id === "1" ? "Facebook" :
+                formData.platform_id === "2" ? "Instagram" :
+                formData.platform_id === "3" ? "Twitter" :
+                formData.platform_id === "4" ? "LinkedIn" : "social media"
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {formData.platform_id === "1" && (
+              <div className="border rounded-lg overflow-hidden bg-white">
+                <div className="p-3 border-b flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
+                    <span className="text-xl font-bold">ⓕ</span>
+                  </div>
+                  <div>
+                    <p className="font-medium">Your Page</p>
+                    <p className="text-xs text-gray-500">
+                      {formData.scheduled_date && formData.scheduled_time 
+                        ? `Scheduled for ${formData.scheduled_date} at ${formData.scheduled_time}`
+                        : "Just now"
+                      }
+                    </p>
+                  </div>
+                </div>
+                <div className="p-3">
+                  <p className="whitespace-pre-wrap mb-3">{formData.content || "Your post content will appear here"}</p>
+                  {formData.media && formData.media.length > 0 && (
+                    <div className={`grid ${formData.media.length > 1 ? 'grid-cols-2 gap-1' : 'grid-cols-1'}`}>
+                      {formData.media.map((item, index) => (
+                        <div key={index} className="aspect-video bg-gray-100 rounded overflow-hidden">
+                          {item.type === 'image' ? (
+                            <img src={item.url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                              <Video className="w-8 h-8 text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 border-t flex justify-around">
+                  <button className="text-gray-600 flex items-center text-sm">
+                    <span className="mr-1">👍</span> Like
+                  </button>
+                  <button className="text-gray-600 flex items-center text-sm">
+                    <span className="mr-1">💬</span> Comment
+                  </button>
+                  <button className="text-gray-600 flex items-center text-sm">
+                    <span className="mr-1">↗️</span> Share
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {formData.platform_id === "2" && (
+              <div className="border rounded-lg overflow-hidden bg-white max-w-md mx-auto">
+                <div className="p-3 border-b flex items-center">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 flex items-center justify-center text-white mr-3">
+                    <span className="text-xs">📷</span>
+                  </div>
+                  <div className="flex-grow">
+                    <p className="font-medium text-sm">your_instagram</p>
+                  </div>
+                  <button className="text-gray-500">•••</button>
+                </div>
+                
+                {formData.media && formData.media.length > 0 ? (
+                  <div className="aspect-square bg-black">
+                    {formData.media[0].type === 'image' ? (
+                      <img src={formData.media[0].url} alt="" className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                        <Video className="w-12 h-12 text-white" />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="aspect-square bg-gray-100 flex items-center justify-center">
+                    <p className="text-gray-400">No media to display</p>
+                  </div>
+                )}
+                
+                <div className="p-3">
+                  <div className="flex justify-between mb-2">
+                    <div className="flex space-x-4">
+                      <span>❤️</span>
+                      <span>💬</span>
+                      <span>↗️</span>
+                    </div>
+                    <span>🔖</span>
+                  </div>
+                  <p className="text-sm mb-1"><strong>your_instagram</strong> {formData.content || "Your caption will appear here"}</p>
+                  <p className="text-xs text-gray-500">
+                    {formData.scheduled_date 
+                      ? `Will be posted on ${formData.scheduled_date}`
+                      : "Just now"
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {formData.platform_id === "3" && (
+              <div className="border rounded-lg overflow-hidden bg-white">
+                <div className="p-3 flex">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-400 mr-3">
+                    <span className="text-xl font-bold">𝕏</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center">
+                      <p className="font-medium">Your Name</p>
+                      <p className="text-gray-500 text-sm ml-1">@your_handle</p>
+                    </div>
+                    <p className="whitespace-pre-wrap mt-1">{formData.content || "Your tweet will appear here"}</p>
+                    
+                    {formData.media && formData.media.length > 0 && (
+                      <div className="mt-2 rounded-lg overflow-hidden border">
+                        {formData.media[0].type === 'image' ? (
+                          <img src={formData.media[0].url} alt="" className="w-full max-h-80 object-cover" />
+                        ) : (
+                          <div className="w-full h-60 flex items-center justify-center bg-gray-100">
+                            <Video className="w-10 h-10 text-gray-500" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="mt-3 flex space-x-8 text-gray-500 text-sm">
+                      <span>💬 0</span>
+                      <span>🔁 0</span>
+                      <span>❤️ 0</span>
+                      <span>📊 0</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formData.platform_id === "4" && (
+              <div className="border rounded-lg overflow-hidden bg-white">
+                <div className="p-3 border-b flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 mr-3">
+                    <span className="text-xl font-bold">in</span>
+                  </div>
+                  <div>
+                    <p className="font-medium">Your Name</p>
+                    <p className="text-xs text-gray-500">
+                      Your Title • {formData.scheduled_date 
+                        ? `Scheduled for ${formData.scheduled_date}`
+                        : "Just now"
+                      }
+                    </p>
+                  </div>
+                </div>
+                <div className="p-3">
+                  <p className="whitespace-pre-wrap mb-3">{formData.content || "Your post content will appear here"}</p>
+                  {formData.media && formData.media.length > 0 && (
+                    <div className="rounded overflow-hidden border">
+                      {formData.media[0].type === 'image' ? (
+                        <img src={formData.media[0].url} alt="" className="w-full max-h-80 object-cover" />
+                      ) : (
+                        <div className="w-full h-60 flex items-center justify-center bg-gray-100">
+                          <Video className="w-10 h-10 text-gray-500" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 border-t flex justify-around">
+                  <button className="text-gray-600 flex items-center text-sm">
+                    <span className="mr-1">👍</span> Like
+                  </button>
+                  <button className="text-gray-600 flex items-center text-sm">
+                    <span className="mr-1">💬</span> Comment
+                  </button>
+                  <button className="text-gray-600 flex items-center text-sm">
+                    <span className="mr-1">↗️</span> Share
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="text-xs text-gray-500 mt-4 text-center">
+              This is a preview and may differ slightly from the actual post appearance
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              onClick={closePreviewModal}
+              className="mt-2"
+            >
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

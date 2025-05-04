@@ -1,426 +1,364 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { socialAuthService } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function IntegrationsPage() {
-  const [connectedAccounts, setConnectedAccounts] = useState(initialConnectedAccounts);
+  const { user } = useAuth();
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [currentPlatform, setCurrentPlatform] = useState(null);
   const [connectStep, setConnectStep] = useState(1);
-  const [authCode, setAuthCode] = useState("");
   const [connectSuccess, setConnectSuccess] = useState(false);
   const [connectError, setConnectError] = useState("");
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectedUserInfo, setConnectedUserInfo] = useState(null);
+  const [connectedAccounts, setConnectedAccounts] = useState([]);
+
+  useEffect(() => {
+    // Initialize Facebook SDK when component mounts
+    socialAuthService.initFacebookSdk().catch(console.error);
+  }, []);
 
   const handleConnectClick = (platform) => {
     setCurrentPlatform(platform);
     setConnectStep(1);
-    setAuthCode("");
     setConnectSuccess(false);
     setConnectError("");
     setShowConnectModal(true);
   };
 
-  const handleContinue = () => {
-    if (connectStep === 1) {
-      // In a real app, this would redirect to the platform's auth page
-      // For demo, we'll just go to the next step
-      setConnectStep(2);
-    } else if (connectStep === 2) {
-      if (!authCode.trim()) {
-        setConnectError("Please enter the authorization code");
-        return;
+  const handlePlatformConnect = async (platform) => {
+    setIsConnecting(true);
+    setShowAuthPopup(true);
+    setConnectError("");
+    
+    try {
+      const { authLink, handleCallback } = await socialAuthService.connectPlatform(platform.id);
+      
+      if (!authLink) {
+        throw new Error('No authentication link received from server');
       }
       
-      // Simulate API call to verify code
-      setTimeout(() => {
-        // Demo succeeds with code "12345"
-        if (authCode === "12345") {
-          setConnectSuccess(true);
-          const newAccount = {
-            id: Math.random().toString(36).slice(2, 11),
-            platform: currentPlatform.id,
-            name: `${currentPlatform.name} Account`,
-            username: `user_${Math.floor(Math.random() * 1000)}`,
-            avatar: "/placeholder-avatar.jpg",
-            status: "active",
-            connectedAt: new Date(),
-            lastSync: new Date()
-          };
+      // Open the auth link in a popup window
+      const authWindow = window.open(authLink, `${platform.name} Login`, 'width=600,height=600');
+      
+      if (!authWindow) {
+        throw new Error('Popup was blocked. Please allow popups for this site.');
+      }
+
+      // Listen for messages from the popup window
+      const handleAuthMessage = async (event) => {
+        if (event.data?.type === 'social_auth_callback') {
+          if (event.data.success) {
+            try {
+              // Process the callback
+              const response = await handleCallback(event.data.token);
+              
+              // Create new account entry
+              const newAccount = {
+                id: Math.random().toString(36).slice(2, 11),
+                platform: platform.id,
+                name: response.profile?.name || `${platform.name} Account`,
+                username: response.profile?.username || user?.email?.split('@')[0] || 'user',
+                avatar: response.profile?.picture || "/placeholder-avatar.jpg",
+                status: "active",
+                connectedAt: new Date(),
+                lastSync: new Date()
+              };
+              
+              setConnectedUserInfo({
+                name: newAccount.name,
+                email: response.profile?.email || user?.email,
+                picture: newAccount.avatar
+              });
+              
+              setConnectedAccounts(prev => [...prev, newAccount]);
+              setConnectSuccess(true);
+              setConnectStep(3);
+              
+              // Close the popup
+              authWindow.close();
+            } catch (error) {
+              setConnectError(error.message || 'Failed to complete authentication');
+              setConnectStep(3);
+            }
+          } else {
+            setConnectError(event.data.error || 'Authentication failed');
+            setConnectStep(3);
+          }
           
-          setConnectedAccounts([...connectedAccounts, newAccount]);
-          setConnectStep(3);
-        } else {
-          setConnectError("Invalid authorization code. Try 12345 for the demo.");
+          // Remove the event listener
+          window.removeEventListener('message', handleAuthMessage);
         }
-      }, 1000);
-    } else if (connectStep === 3) {
-      // Close the modal after success
-      setShowConnectModal(false);
+      };
+      
+      // Add event listener for popup messages
+      window.addEventListener('message', handleAuthMessage);
+      
+    } catch (error) {
+      console.error('Connection error:', error);
+      setConnectError(error.message || error.toString());
+      setConnectStep(3);
+    } finally {
+      setShowAuthPopup(false);
+      setIsConnecting(false);
     }
   };
 
-  const handleDisconnect = (accountId) => {
-    const updatedAccounts = connectedAccounts.filter(account => account.id !== accountId);
-    setConnectedAccounts(updatedAccounts);
-  };
-
-  const handleRefreshAccount = (accountId) => {
-    const updatedAccounts = connectedAccounts.map(account => {
-      if (account.id === accountId) {
-        return {
-          ...account,
-          lastSync: new Date()
-        };
-      }
-      return account;
-    });
-    setConnectedAccounts(updatedAccounts);
-  };
+  const platforms = [
+    {
+      id: "facebook",
+      name: "Facebook",
+      icon: "f",
+      bgColor: "bg-blue-100",
+      color: "bg-blue-600 text-white",
+      description: "Connect your Facebook account to manage pages and posts"
+    },
+    {
+      id: "instagram",
+      name: "Instagram",
+      icon: "📸",
+      bgColor: "bg-gradient-to-r from-purple-100 to-pink-100",
+      color: "bg-gradient-to-r from-purple-600 to-pink-600 text-white",
+      description: "Connect your Instagram business account to manage posts"
+    },
+    {
+      id: "linkedin",
+      name: "LinkedIn",
+      icon: "in",
+      bgColor: "bg-blue-100",
+      color: "bg-blue-800 text-white",
+      description: "Connect your LinkedIn profile to manage professional content"
+    }
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Integrations</h2>
-          <p className="text-muted-foreground">
-            Connect your social media accounts and other marketing tools.
-          </p>
-        </div>
+    <div className="container py-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Integrations</h1>
+        <p className="text-muted-foreground">Connect and manage your social media accounts</p>
       </div>
 
       <Tabs defaultValue="accounts">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList>
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
           <TabsTrigger value="tools">Tools</TabsTrigger>
           <TabsTrigger value="api">API Keys</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="accounts" className="space-y-4 pt-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold">Connected Accounts</h3>
-            <Button onClick={() => setShowConnectModal(true)}>Connect New Account</Button>
-          </div>
-          
-          {connectedAccounts.length === 0 ? (
-            <Alert className="bg-muted">
-              <AlertTitle>No accounts connected yet</AlertTitle>
-              <AlertDescription>
-                Connect your social media accounts to start scheduling posts and analyzing performance.
-              </AlertDescription>
-            </Alert>
-          ) : (
+
+        <TabsContent value="accounts" className="space-y-6">
+          {/* Connected Accounts */}
+          {connectedAccounts.length > 0 && (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {connectedAccounts.map((account) => {
-                const platform = platforms.find(p => p.id === account.platform);
-                return (
-                  <Card key={account.id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-8 h-8 rounded flex items-center justify-center ${platform.bgColor}`}>
-                            {platform.icon}
-                          </div>
-                          <CardTitle className="text-lg">{platform.name}</CardTitle>
-                        </div>
-                        <Badge variant={account.status === "active" ? "default" : "outline"}>
-                          {account.status === "active" ? "Active" : "Error"}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center space-x-3 mb-2">
-                        <img 
-                          src={account.avatar} 
-                          alt={account.name} 
-                          className="w-8 h-8 rounded-full"
-                        />
-                        <div>
-                          <div className="font-medium">{account.name}</div>
-                          <div className="text-xs text-muted-foreground">@{account.username}</div>
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        Last synced: {new Date(account.lastSync).toLocaleString()}
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex justify-between pt-0">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleRefreshAccount(account.id)}
-                      >
-                        Refresh
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleDisconnect(account.id)}
-                      >
-                        Disconnect
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                );
-              })}
+              {connectedAccounts.map(account => (
+                <Card key={account.id}>
+                  <CardHeader className="flex flex-row items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      account.platform === "facebook" ? "bg-blue-600 text-white" : 
+                      account.platform === "instagram" ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" :
+                      account.platform === "linkedin" ? "bg-blue-800 text-white" : ""
+                    }`}>
+                      <img src={account.avatar} alt="" className="w-full h-full rounded-full" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">{account.name}</CardTitle>
+                      <CardDescription>@{account.username}</CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      Connected
+                    </Badge>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
-          
-          <div className="mt-8 space-y-4">
-            <h3 className="text-xl font-semibold">Available Platforms</h3>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {platforms.map((platform) => {
-                const isConnected = connectedAccounts.some(a => a.platform === platform.id);
-                return (
-                  <Card key={platform.id} className={isConnected ? "border-primary/50" : ""}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-8 h-8 rounded flex items-center justify-center ${platform.bgColor}`}>
-                          {platform.icon}
-                        </div>
-                        <CardTitle className="text-md">{platform.name}</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-xs">
-                        {platform.description}
-                      </CardDescription>
-                    </CardContent>
-                    <CardFooter>
-                      <Button 
-                        variant={isConnected ? "outline" : "default"} 
-                        size="sm" 
-                        className="w-full"
-                        disabled={isConnected}
-                        onClick={() => handleConnectClick(platform)}
-                      >
-                        {isConnected ? "Connected" : "Connect"}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="tools" className="space-y-4 pt-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold">Marketing Tools</h3>
-            <Button variant="outline">Add New Tool</Button>
-          </div>
-          
-          <Alert className="bg-muted">
-            <AlertTitle>No tools connected yet</AlertTitle>
-            <AlertDescription>
-              Connect your marketing tools to enhance your workflow.
-            </AlertDescription>
-          </Alert>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {marketingTools.map((tool) => (
-              <Card key={tool.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 rounded flex items-center justify-center bg-muted">
-                      {tool.icon}
-                    </div>
-                    <CardTitle className="text-md">{tool.name}</CardTitle>
+
+          {/* Available Platforms */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {platforms.map(platform => (
+              <Card key={platform.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl ${platform.color}`}>
+                    {platform.icon}
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">{platform.name}</CardTitle>
+                    <CardDescription>{platform.description}</CardDescription>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-xs">
-                    {tool.description}
-                  </CardDescription>
-                </CardContent>
                 <CardFooter>
                   <Button 
                     variant="outline" 
-                    size="sm" 
                     className="w-full"
+                    onClick={() => handleConnectClick(platform)}
                   >
-                    Connect
+                    Connect {platform.name}
                   </Button>
                 </CardFooter>
               </Card>
             ))}
           </div>
         </TabsContent>
-        
-        <TabsContent value="api" className="space-y-4 pt-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold">API Integration</h3>
-            <Button variant="outline">Generate New Key</Button>
-          </div>
-          
+
+        <TabsContent value="tools">
           <Card>
             <CardHeader>
-              <CardTitle>Your API Keys</CardTitle>
-              <CardDescription>
-                Use these keys to access our API and integrate with your own systems.
-              </CardDescription>
+              <CardTitle>Marketing Tools</CardTitle>
+              <CardDescription>Connect your favorite marketing tools</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Coming soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="api">
+          <Card>
+            <CardHeader>
+              <CardTitle>API Keys</CardTitle>
+              <CardDescription>Manage your API keys for direct integration</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">Production Key</div>
-                    <div className="text-sm text-muted-foreground">Created: August 2, 2023</div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">Show</Button>
-                    <Button variant="outline" size="sm">Revoke</Button>
-                  </div>
+                <div>
+                  <h3 className="font-medium mb-2">Production Key</h3>
+                  <code className="bg-muted p-2 rounded">xxxx-xxxx-xxxx-xxxx</code>
                 </div>
-                
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">Development Key</div>
-                    <div className="text-sm text-muted-foreground">Created: July 15, 2023</div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">Show</Button>
-                    <Button variant="outline" size="sm">Revoke</Button>
-                  </div>
+                <div>
+                  <h3 className="font-medium mb-2">Development Key</h3>
+                  <code className="bg-muted p-2 rounded">dev-xxxx-xxxx-xxxx</code>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>API Documentation</CardTitle>
-              <CardDescription>
-                Learn how to integrate with our platform through the API.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-2">
-                <a href="#" className="text-blue-600 hover:underline">Getting Started Guide</a>
-                <a href="#" className="text-blue-600 hover:underline">API Reference</a>
-                <a href="#" className="text-blue-600 hover:underline">Code Examples</a>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-      
+
       {/* Connect Account Modal */}
       {showConnectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-6 w-full max-w-md">
+          <div className="bg-background rounded-lg p-6 w-full max-w-md relative">
+            {/* Auth Popup Overlay */}
+            {showAuthPopup && (
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 w-96 z-10">
+                <div className="flex items-center space-x-3 border-b pb-4">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${currentPlatform?.color}`}>
+                    {currentPlatform?.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-xl">{currentPlatform?.name}</h3>
+                    <p className="text-sm text-gray-600">Log in to continue</p>
+                  </div>
+                </div>
+                <div className="py-4 text-center">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-4">
+                    Connecting to {currentPlatform?.name}...
+                  </p>
+                </div>
+              </div>
+            )}
+
             <h2 className="text-xl font-semibold mb-4">
-              {currentPlatform 
-                ? `Connect to ${currentPlatform.name}`
-                : "Connect Social Media Account"
+              {connectStep === 3 && connectSuccess
+                ? "Connection Successful!"
+                : currentPlatform 
+                  ? `Connect to ${currentPlatform.name}`
+                  : "Connect Social Media Account"
               }
             </h2>
             
             {connectStep === 1 && (
               <div className="space-y-4">
-                {!currentPlatform ? (
-                  <div className="grid gap-3 grid-cols-2">
-                    {platforms.map((platform) => (
-                      <button
-                        key={platform.id}
-                        className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent"
-                        onClick={() => setCurrentPlatform(platform)}
-                      >
-                        <div className={`w-8 h-8 rounded flex items-center justify-center ${platform.bgColor}`}>
-                          {platform.icon}
-                        </div>
-                        <span>{platform.name}</span>
-                      </button>
-                    ))}
+                <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 rounded flex items-center justify-center ${currentPlatform?.bgColor}`}>
+                    {currentPlatform?.icon}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 rounded flex items-center justify-center ${currentPlatform.bgColor}`}>
-                        {currentPlatform.icon}
-                      </div>
-                      <div>
-                        <div className="font-medium">{currentPlatform.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {currentPlatform.description}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-muted p-4 rounded-lg">
-                      <p className="text-sm">
-                        To connect your {currentPlatform.name} account, you'll need to:
-                      </p>
-                      <ol className="list-decimal list-inside text-sm mt-2 space-y-1">
-                        <li>Authorize access to your account</li>
-                        <li>Copy the authorization code</li>
-                        <li>Paste the code here to complete the connection</li>
-                      </ol>
+                  <div>
+                    <div className="font-medium">{currentPlatform?.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {currentPlatform?.description}
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-            
-            {connectStep === 2 && (
-              <div className="space-y-4">
-                <p className="text-sm">
-                  Enter the authorization code you received from {currentPlatform.name}
-                </p>
+                </div>
                 
-                <div>
-                  <label htmlFor="auth-code" className="text-sm font-medium">
-                    Authorization Code
-                  </label>
-                  <input
-                    id="auth-code"
-                    type="text"
-                    className="w-full p-2 mt-1 border rounded-lg"
-                    placeholder="Enter code here"
-                    value={authCode}
-                    onChange={(e) => setAuthCode(e.target.value)}
-                  />
-                  {connectError && (
-                    <p className="text-sm text-red-500 mt-1">{connectError}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    For this demo, use code: 12345
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm">
+                    This will allow the app to:
                   </p>
+                  <ul className="list-disc list-inside text-sm mt-2 space-y-1">
+                    <li>Access your public profile information</li>
+                    <li>Manage your pages and posts</li>
+                    <li>Read engagement metrics</li>
+                  </ul>
                 </div>
               </div>
             )}
             
             {connectStep === 3 && (
-              <div className="space-y-4 text-center">
-                <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xl">
-                  ✓
-                </div>
-                <h3 className="text-lg font-medium">Connection Successful!</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your {currentPlatform.name} account has been successfully connected.
-                  You can now schedule posts and view analytics for this account.
-                </p>
+              <div className="space-y-4">
+                {connectSuccess && connectedUserInfo ? (
+                  <div className="text-center">
+                    <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600 text-2xl mb-4">
+                      ✓
+                    </div>
+                    <div className="flex items-center justify-center space-x-3 mb-4">
+                      <img 
+                        src={connectedUserInfo.picture} 
+                        alt={connectedUserInfo.name}
+                        className="w-12 h-12 rounded-full"
+                      />
+                      <div className="text-left">
+                        <div className="font-medium">{connectedUserInfo.name}</div>
+                        <div className="text-sm text-muted-foreground">{connectedUserInfo.email}</div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Your {currentPlatform.name} account has been successfully connected.
+                      You can now start managing your content and viewing analytics.
+                    </p>
+                  </div>
+                ) : (
+                  <Alert variant="destructive">
+                    <AlertTitle>Connection Failed</AlertTitle>
+                    <AlertDescription>{connectError}</AlertDescription>
+                  </Alert>
+                )}
               </div>
             )}
-            
+
             <div className="flex justify-end gap-3 mt-6">
               <Button
                 variant="outline"
                 onClick={() => setShowConnectModal(false)}
+                disabled={isConnecting}
               >
                 {connectStep === 3 ? "Close" : "Cancel"}
               </Button>
               
-              {connectStep < 3 && (
-                <Button onClick={handleContinue}>
-                  {connectStep === 1
-                    ? currentPlatform 
-                      ? "Authorize Account" 
-                      : "Continue"
-                    : "Connect Account"}
+              {connectStep === 1 && (
+                <Button 
+                  onClick={() => handlePlatformConnect(currentPlatform)}
+                  disabled={isConnecting}
+                >
+                  {isConnecting ? (
+                    <span className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Connecting...</span>
+                    </span>
+                  ) : (
+                    "Connect Account"
+                  )}
                 </Button>
               )}
             </div>
@@ -430,113 +368,3 @@ export function IntegrationsPage() {
     </div>
   );
 }
-
-// Sample data
-const platforms = [
-  {
-    id: "facebook",
-    name: "Facebook",
-    icon: "f",
-    bgColor: "bg-blue-100 text-blue-800",
-    description: "Connect to your Facebook pages to schedule posts and analyze performance."
-  },
-  {
-    id: "instagram",
-    name: "Instagram",
-    icon: "📸",
-    bgColor: "bg-pink-100 text-pink-800",
-    description: "Connect to your Instagram business account to schedule posts and analyze performance."
-  },
-  {
-    id: "twitter",
-    name: "Twitter",
-    icon: "𝕏",
-    bgColor: "bg-gray-100 text-gray-800",
-    description: "Connect to your Twitter account to schedule tweets and analyze engagement."
-  },
-  {
-    id: "linkedin",
-    name: "LinkedIn",
-    icon: "in",
-    bgColor: "bg-blue-100 text-blue-800",
-    description: "Connect to your LinkedIn profile or page to schedule posts and track analytics."
-  },
-  {
-    id: "pinterest",
-    name: "Pinterest",
-    icon: "P",
-    bgColor: "bg-red-100 text-red-800",
-    description: "Connect to your Pinterest account to schedule pins and analyze performance."
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    icon: "♪",
-    bgColor: "bg-black text-white",
-    description: "Connect to your TikTok account to schedule posts and analyze performance."
-  },
-  {
-    id: "youtube",
-    name: "YouTube",
-    icon: "▶",
-    bgColor: "bg-red-100 text-red-800",
-    description: "Connect to your YouTube channel to schedule uploads and analyze performance."
-  },
-  {
-    id: "threads",
-    name: "Threads",
-    icon: "@",
-    bgColor: "bg-gray-100 text-gray-800",
-    description: "Connect to your Threads account to schedule posts and track engagement."
-  }
-];
-
-const marketingTools = [
-  {
-    id: "mailchimp",
-    name: "Mailchimp",
-    icon: "📧",
-    description: "Email marketing platform for sending campaigns and newsletters."
-  },
-  {
-    id: "hubspot",
-    name: "HubSpot",
-    icon: "H",
-    description: "CRM platform with marketing, sales, and service tools."
-  },
-  {
-    id: "canva",
-    name: "Canva",
-    icon: "🎨",
-    description: "Design tool for creating social media graphics and more."
-  },
-  {
-    id: "google-analytics",
-    name: "Google Analytics",
-    icon: "📈",
-    description: "Web analytics service to track website traffic and performance."
-  }
-];
-
-const initialConnectedAccounts = [
-  {
-    id: "acc1",
-    platform: "facebook",
-    name: "Brand Page",
-    username: "yourbrand",
-    avatar: "/placeholder-avatar.jpg",
-    status: "active",
-    connectedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    lastSync: new Date(Date.now() - 2 * 60 * 60 * 1000)
-  },
-  {
-    id: "acc2",
-    platform: "instagram",
-    name: "Brand Profile",
-    username: "yourbrand",
-    avatar: "/placeholder-avatar.jpg",
-    status: "active",
-    connectedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-    lastSync: new Date(Date.now() - 5 * 60 * 60 * 1000)
-  }
-]; 

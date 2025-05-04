@@ -193,6 +193,98 @@ export const authService = {
 };
 
 /**
+ * Social Media Authentication Services
+ */
+export const socialAuthService = {
+  // Initialize Facebook SDK
+  initFacebookSdk: () => {
+    return new Promise((resolve) => {
+      window.fbAsyncInit = function() {
+        window.FB.init({
+          appId: import.meta.env.VITE_FACEBOOK_APP_ID || '123456789012345',
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+        resolve();
+      };
+
+      // Load the SDK
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+    });
+  },
+
+  // Get social platform authentication link
+  getSocialAuthLink: async (platform) => {
+    try {
+      const response = await api.post('/link/social/login', { 
+        type: platform 
+      }, {
+        baseURL: 'https://ai.loomsuite.com/api',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.status === 'success' && response.link) {
+        return response.link;
+      } else {
+        throw new Error(response.message || 'Invalid response format');
+      }
+    } catch (error) {
+      console.error('Error getting social auth link:', error);
+      throw error;
+    }
+  },
+
+  // Handle platform connection
+  connectPlatform: async (platform) => {
+    try {
+      // Get the auth link
+      const authLink = await socialAuthService.getSocialAuthLink(platform);
+      
+      // Return the auth link and a function to handle the popup
+      return {
+        authLink,
+        handleCallback: async (token) => {
+          // Here we can make any additional API calls needed after successful authentication
+          const response = await api.post('/link/social/callback', {
+            platform,
+            token
+          }, {
+            baseURL: 'https://ai.loomsuite.com/api'
+          });
+          
+          return response;
+        }
+      };
+    } catch (error) {
+      console.error('Error connecting platform:', error);
+      throw error;
+    }
+  },
+
+  // Get connected accounts
+  getConnectedAccounts: async () => {
+    try {
+      const response = await api.get('/social/connected-accounts', {
+        baseURL: 'https://ai.loomsuite.com/api'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error fetching connected accounts:', error);
+      throw error;
+    }
+  }
+};
+
+/**
  * User Account API services
  */
 export const accountService = {
@@ -388,4 +480,4 @@ export const commentRepliesService = {
 };
 
 // Export the api instance for other requests
-export default api; 
+export default api;
