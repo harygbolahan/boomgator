@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { Slot } from "@radix-ui/react-slot";
 
 // Define buttonVariants function to be exported
 const buttonVariants = ({ variant = "default", size = "default", className = "" } = {}) => {
@@ -36,7 +37,7 @@ const buttonVariants = ({ variant = "default", size = "default", className = "" 
 
 const Button = React.forwardRef(
   ({ className, variant = "default", size = "default", asChild = false, ...props }, ref) => {
-    const Comp = asChild ? React.Fragment : "button";
+    const Comp = asChild ? Slot : "button";
     
     return (
       <Comp

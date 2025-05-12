@@ -1,15 +1,67 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '@/lib/api';
 import { toast } from 'react-toastify';
 
 // Create the Auth Context
 const AuthContext = createContext(null);
 
+// Helper function to extract the most specific error message from an API error
+const extractErrorMessage = (error) => {
+  if (!error) return 'An unknown error occurred';
+  
+  // Check for response data message (most specific)
+  if (error.response?.data?.message) {
+    return error.response.data.message;
+  }
+  
+  // Check for response data error
+  if (error.response?.data?.error) {
+    return error.response.data.error;
+  }
+  
+  // If error is already a string, return it
+  if (typeof error === 'string') {
+    return error;
+  }
+  
+  // Check for standard error message
+  if (error.message) {
+    // For 401, provide a more user-friendly message than "Request failed with status code 401"
+    if (error.response?.status === 401) {
+      return 'Invalid email or password';
+    }
+    return error.message;
+  }
+  
+  // Fallback for unknown error format
+  return 'Something went wrong. Please try again.';
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Logout function (defined early using useCallback to avoid recreating it)
+  const logout = useCallback(() => {
+    console.log('Logging out user from AuthContext');
+    authService.logout();
+    setUser(null);
+    setToken(null);
+    toast.info('Logged out successfully');
+  }, []);
+
+  // Register the logout function with authService
+  useEffect(() => {
+    // Register the logout handler with the auth service
+    authService.setLogoutHandler(logout);
+    
+    return () => {
+      // Clear the logout handler when component unmounts
+      authService.setLogoutHandler(null);
+    };
+  }, [logout]);
 
   // Initialize auth state on app load
   useEffect(() => {
@@ -98,7 +150,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      const errorMsg = error.message || 'Failed to login. Please check your credentials.';
+      const errorMsg = extractErrorMessage(error);
       setError(errorMsg);
       toast.error(errorMsg);
       setLoading(false);
@@ -133,21 +185,13 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setError(error.message || 'Failed to register. Please try again.');
-      toast.error(error.message || 'Registration failed');
-      return { success: false, error: error.message };
+      const errorMsg = extractErrorMessage(error);
+      setError(errorMsg);
+      toast.error(errorMsg);
+      return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
-  };
-
-  // Logout function
-  const logout = () => {
-    console.log('Logging out user');
-    authService.logout();
-    setUser(null);
-    setToken(null);
-    toast.info('Logged out successfully');
   };
 
   // Check if user is authenticated

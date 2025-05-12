@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export function Login() {
   const navigate = useNavigate();
@@ -16,12 +16,6 @@ export function Login() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Mock credentials (will be removed in production)
-  const mockCredentials = {
-    email: "ibrahimmdamilare@gmail.com",
-    password: "iBra@Hundred!Key"
-  };
-
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
@@ -54,15 +48,18 @@ export function Login() {
       const result = await login({ email, password });
       
       if (!result.success) {
+        // Use the improved error message from the API
         setError(result.error || "Invalid email or password");
         setIsLoading(false);
         return;
       }
       
-      // Success: AuthContext handles redirect, Login component doesn't need to do anything here
+      // Success: AuthContext handles redirect
       // setIsLoading will be managed by the redirect or component unmount
 
     } catch (err) {
+      // This catch block may not be needed as errors are handled in the login function
+      // But we keep it as a fallback
       setError(err.message || "An error occurred. Please try again.");
       setIsLoading(false);
       return;
@@ -92,16 +89,12 @@ export function Login() {
             <p className="text-sm sm:text-base text-muted-foreground mt-2">Log in to your account to continue</p>
           </div>
           
-          {/* Mock credentials info - Remove in production */}
-          <div className="mb-6 p-3 sm:p-4 text-sm bg-blue-50 text-blue-700 rounded-lg">
-            <p className="font-medium">Demo Credentials</p>
-            <p className="text-xs sm:text-sm">Email: {mockCredentials.email}</p>
-            <p className="text-xs sm:text-sm">Password: {mockCredentials.password}</p>
-          </div>
+         
           
           {error && (
-            <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg">
-              {error}
+            <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
           

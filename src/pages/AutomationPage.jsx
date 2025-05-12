@@ -28,7 +28,7 @@ const PLATFORMS = {
 };
 
 // EmptyState component
-const EmptyState = ({ searchQuery, onCreateClick }) => (
+const EmptyState = ({ searchQuery, onCreateClick, isLoading }) => (
   <motion.div 
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -51,9 +51,12 @@ const EmptyState = ({ searchQuery, onCreateClick }) => (
       }
     </p>
     {!searchQuery && (
-      <Button onClick={onCreateClick}>
-        <Plus className="mr-1.5 h-4 w-4" />
-        Create Automation
+      <Button onClick={onCreateClick} disabled={isLoading}>
+        {isLoading ? (
+          <><span className="mr-1.5 h-4 w-4 animate-spin inline-block">◌</span> Creating...</>
+        ) : (
+          <><Plus className="mr-1.5 h-4 w-4" /> Create Automation</>
+        )}
       </Button>
     )}
   </motion.div>
@@ -124,6 +127,15 @@ export function AutomationPage() {
   const [currentAutomation, setCurrentAutomation] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   
+  // Loading states for various actions
+  const [loadingCreate, setLoadingCreate] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [loadingStatusChanges, setLoadingStatusChanges] = useState({});
+  const [loadingDelete, setLoadingDelete] = useState({});
+  const [loadingView, setLoadingView] = useState({});
+  const [loadingDuplicate, setLoadingDuplicate] = useState({});
+  
   // Fetch automations on component mount
   useEffect(() => {
     fetchAutomations();
@@ -134,7 +146,24 @@ export function AutomationPage() {
     try {
       setLoading(true);
       const data = await automationService.getAllAutomations();
-      setAutomationsList(Array.isArray(data) ? data : []);
+      console.log('Fetched automations:', data);
+      
+      // Ensure each automation has all required fields
+      const validatedData = Array.isArray(data) ? data.map(automation => ({
+        id: automation.id || `auto-${Date.now()}`,
+        name: automation.name || 'Unnamed Automation',
+        type: automation.type || 'Comment',
+        platform: automation.platform || '398280132',
+        incoming: automation.incoming || '',
+        content: automation.content || '',
+        status: automation.status || 'Paused',
+        triggers: automation.triggers || 0,
+        actions: automation.actions || 0,
+        created_at: automation.created_at || new Date().toISOString(),
+        ...automation
+      })) : [];
+      
+      setAutomationsList(validatedData);
       setError(null);
     } catch (err) {
       console.error("Error fetching automations:", err);
@@ -171,62 +200,96 @@ export function AutomationPage() {
   
   // Improved automation creation process
   const handleOpenAutomationDialog = (type = null) => {
-    if (type) {
-      setSelectedType(type);
-      setCurrentAutomation({
-        name: `New ${type} Automation`,
-        type: type,
-        platform: "398280132", // Default to Facebook
-        incoming: type === "Comment" ? "New comment on post" : 
-                  type === "Message" ? "Direct message received" : 
-                  type === "Keyword" ? "Message contains keywords" : 
-                  "Story mention",
-        content: `Thank you for your ${type.toLowerCase()}! We'll get back to you shortly.`,
-        status: "Active",
-        triggers: 0,
-        actions: 0,
-        isNew: true
-      });
-    } else {
-      setSelectedType(null);
-      setCurrentAutomation({
-        name: "New Automation",
-        type: "Comment",
-        platform: "398280132", // Default to Facebook
-        incoming: "New comment on post",
-        content: "Thank you for your comment! We'll get back to you shortly.",
-        status: "Active",
-        triggers: 0,
-        actions: 0,
-        isNew: true
-      });
-    }
+    setLoadingCreate(true);
     
-    setShowAutomationDialog(true);
+    try {
+      if (type) {
+        setSelectedType(type);
+        setCurrentAutomation({
+          name: `New ${type} Automation`,
+          type: type,
+          platform: "398280132", // Default to Facebook
+          incoming: type === "Comment" ? "New comment on post" : 
+                    type === "Message" ? "Direct message received" : 
+                    type === "Keyword" ? "Message contains keywords" : 
+                    "Story mention",
+          content: `Thank you for your ${type.toLowerCase()}! We'll get back to you shortly.`,
+          status: "Active",
+          triggers: 0,
+          actions: 0,
+          isNew: true
+        });
+      } else {
+        setSelectedType(null);
+        setCurrentAutomation({
+          name: "New Automation",
+          type: "Comment",
+          platform: "398280132", // Default to Facebook
+          incoming: "New comment on post",
+          content: "Thank you for your comment! We'll get back to you shortly.",
+          status: "Active",
+          triggers: 0,
+          actions: 0,
+          isNew: true
+        });
+      }
+      
+      setShowAutomationDialog(true);
+    } finally {
+      setLoadingCreate(false);
+    }
   };
   
   // Open the automation dialog for editing an existing automation
   const handleEditAutomation = (automation) => {
-    setCurrentAutomation({
-      ...automation,
-      isNew: false
-    });
-    setShowAutomationDialog(true);
+    try {
+      setLoadingEdit(true);
+      setCurrentAutomation({
+        ...automation,
+        isNew: false
+      });
+      setShowAutomationDialog(true);
+    } finally {
+      setLoadingEdit(false);
+    }
   };
   
   // View automation details (could expand to a new page or modal)
   const handleViewAutomation = (automation) => {
-    toast.info(`Viewing details for "${automation.name}"`);
-    // Implementation for viewing details would go here
+    try {
+      setLoadingView(prev => ({ ...prev, [automation.id]: true }));
+      toast.info(`Viewing details for "${automation.name}"`);
+      // Implementation for viewing details would go here
+    } finally {
+      setLoadingView(prev => ({ ...prev, [automation.id]: false }));
+    }
   };
   
   // Save a new or edited automation
   const handleSaveAutomation = async (automation) => {
     try {
+      setLoadingSave(true);
+      
       if (automation.isNew) {
         // Create new automation
         const { isNew, ...autoData } = automation;
-        const response = await automationService.createAutomation(autoData);
+        
+        // Ensure all required fields
+        const completeData = {
+          id: autoData.id || `auto-${Date.now()}`,
+          name: autoData.name || 'Unnamed Automation',
+          type: autoData.type || 'Comment',
+          platform: autoData.platform || '398280132',
+          incoming: autoData.incoming || '',
+          content: autoData.content || '',
+          status: autoData.status || 'Active',
+          triggers: autoData.triggers || 0,
+          actions: autoData.actions || 0,
+          created_at: autoData.created_at || new Date().toISOString(),
+          ...autoData
+        };
+        
+        const response = await automationService.createAutomation(completeData);
         
         // Update the automations list with the new item
         setAutomationsList([response, ...automationsList]);
@@ -235,7 +298,21 @@ export function AutomationPage() {
       } else {
         // Update existing automation
         const { isNew, ...autoData } = automation;
-        const response = await automationService.updateAutomation(autoData);
+        
+        // Ensure all required fields
+        const completeData = {
+          name: autoData.name || 'Unnamed Automation',
+          type: autoData.type || 'Comment',
+          platform: autoData.platform || '398280132',
+          incoming: autoData.incoming || '',
+          content: autoData.content || '',
+          status: autoData.status || 'Active',
+          triggers: autoData.triggers || 0,
+          actions: autoData.actions || 0,
+          ...autoData
+        };
+        
+        const response = await automationService.updateAutomation(completeData);
         
         // Update the automations list
         const updatedList = automationsList.map(item => 
@@ -249,14 +326,18 @@ export function AutomationPage() {
     } catch (err) {
       console.error("Error saving automation:", err);
       toast.error(`Failed to ${automation.isNew ? 'create' : 'update'} automation: ${err.message}`);
+    } finally {
+      setLoadingSave(false);
+      setShowAutomationDialog(false);
     }
-    
-    setShowAutomationDialog(false);
   };
   
   // Change the status of an automation
   const handleStatusChange = async (id, newStatus) => {
     try {
+      // Set loading state for this specific automation
+      setLoadingStatusChanges(prev => ({ ...prev, [id]: true }));
+      
       const automation = automationsList.find(item => item.id === id);
       if (!automation) return;
       
@@ -276,12 +357,18 @@ export function AutomationPage() {
     } catch (err) {
       console.error("Error updating automation status:", err);
       toast.error(`Failed to update status: ${err.message}`);
+    } finally {
+      // Clear loading state for this specific automation
+      setLoadingStatusChanges(prev => ({ ...prev, [id]: false }));
     }
   };
   
   // Delete an automation
   const handleDeleteAutomation = async (id) => {
     try {
+      // Set loading state for this specific deletion
+      setLoadingDelete(prev => ({ ...prev, [id]: true }));
+      
       const automation = automationsList.find(item => item.id === id);
       if (!automation) return;
       
@@ -295,6 +382,37 @@ export function AutomationPage() {
     } catch (err) {
       console.error("Error deleting automation:", err);
       toast.error(`Failed to delete automation: ${err.message}`);
+    } finally {
+      // Clear loading state
+      setLoadingDelete(prev => ({ ...prev, [id]: false }));
+    }
+  };
+  
+  // Duplicate an automation
+  const handleDuplicateAutomation = async (automation) => {
+    try {
+      setLoadingDuplicate(prev => ({ ...prev, [automation.id]: true }));
+      
+      // Create a new automation based on the existing one
+      const duplicatedAutomation = {
+        ...automation,
+        id: undefined, // Remove ID so a new one is generated
+        name: `Copy of ${automation.name}`,
+        isNew: true,
+        created_at: new Date().toISOString()
+      };
+      
+      const response = await automationService.createAutomation(duplicatedAutomation);
+      
+      // Update the automations list with the new item
+      setAutomationsList([response, ...automationsList]);
+      
+      toast.success(`"${response.name}" has been created as a duplicate.`);
+    } catch (err) {
+      console.error("Error duplicating automation:", err);
+      toast.error(`Failed to duplicate automation: ${err.message}`);
+    } finally {
+      setLoadingDuplicate(prev => ({ ...prev, [automation.id]: false }));
     }
   };
   
@@ -354,9 +472,13 @@ export function AutomationPage() {
                 <Button 
                   onClick={() => handleOpenAutomationDialog()}
                   className="w-full sm:w-auto mt-2 sm:mt-0"
+                  disabled={loadingCreate}
                 >
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Create Automation
+                  {loadingCreate ? (
+                    <><span className="mr-1.5 h-4 w-4 animate-spin inline-block">◌</span> Creating...</>
+                  ) : (
+                    <><Plus className="mr-1.5 h-4 w-4" /> Create Automation</>
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left">
@@ -450,16 +572,30 @@ export function AutomationPage() {
                     
                     <div className="grid grid-cols-1 gap-4 sm:gap-6">
                       <AnimatePresence>
-                        {filteredAutomations.map((automation) => (
-                          <AutomationCard
-                            key={automation.id}
-                            automation={automation}
-                            onStatusChange={handleStatusChange}
-                            onEdit={handleEditAutomation}
-                            onDelete={handleDeleteAutomation}
-                            onView={handleViewAutomation}
-                          />
-                        ))}
+                        {filteredAutomations.map((automation) => {
+                          // Skip rendering if missing critical data
+                          if (!automation || !automation.id) {
+                            console.warn('Invalid automation data:', automation);
+                            return null;
+                          }
+                          
+                          return (
+                            <AutomationCard
+                              key={automation.id}
+                              automation={automation}
+                              onStatusChange={handleStatusChange}
+                              onEdit={handleEditAutomation}
+                              onDelete={handleDeleteAutomation}
+                              onView={handleViewAutomation}
+                              onDuplicate={handleDuplicateAutomation}
+                              isLoadingStatus={loadingStatusChanges[automation.id]}
+                              isLoadingDelete={loadingDelete[automation.id]}
+                              isLoadingView={loadingView[automation.id]}
+                              isLoadingEdit={loadingEdit}
+                              isLoadingDuplicate={loadingDuplicate[automation.id]}
+                            />
+                          );
+                        })}
                       </AnimatePresence>
                     </div>
                   </>
@@ -467,6 +603,7 @@ export function AutomationPage() {
                   <EmptyState 
                     searchQuery={searchQuery} 
                     onCreateClick={() => handleOpenAutomationDialog()} 
+                    isLoading={loadingCreate}
                   />
                 )}
               </div>
@@ -486,6 +623,7 @@ export function AutomationPage() {
                     key={type.id}
                     type={type}
                     onCreateClick={handleOpenAutomationDialog}
+                    isLoading={loadingCreate}
                   />
                 ))}
               </div>
@@ -521,6 +659,7 @@ export function AutomationPage() {
         onSave={handleSaveAutomation}
         selectedType={selectedType}
         platforms={Object.entries(PLATFORMS).map(([id, name]) => ({ id, name }))}
+        isLoading={loadingSave}
       />
     </>
   );

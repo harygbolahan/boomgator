@@ -8,21 +8,17 @@ export function PageNavigation() {
   const pages = [
     { name: 'Dashboard', path: '/dashboard' },
     { name: 'Account', path: '/account' },
-    { name: 'AI Content Creator', path: '/ai-content-creator' },
     { name: 'Analytics', path: '/analytics' },
     { name: 'Automation', path: '/automation' },
     { name: 'Calendar', path: '/calendar' },
     { name: 'Social Hub', path: '/social-hub' },
     { name: 'Content Scheduler', path: '/content-scheduler' },
     { name: 'Enhancements', path: '/enhancements' },
-    { name: 'Instagram Viral Finder', path: '/instagram-viral-finder' },
     { name: 'Integrations', path: '/integrations' },
-    { name: 'Messenger Broadcast', path: '/messenger-broadcast' },
     { name: 'Notifications', path: '/notifications' },
     { name: 'Payment Plans', path: '/payment-plans' },
     { name: 'Setup Guide', path: '/setup-guide' },
     { name: 'Support', path: '/support' },
-    { name: 'WhatsApp Bot', path: '/whatsapp-bot' },
     { name: 'Logout', path: '/logout' },
   ];
 

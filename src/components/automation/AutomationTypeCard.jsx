@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
-export const AutomationTypeCard = ({ type, onCreateClick }) => {
+export const AutomationTypeCard = ({ type, onCreateClick, isLoading }) => {
   // Get lowercased type ID for styling
   const getLowercaseType = (typeId) => typeId?.toLowerCase() || '';
   
@@ -67,9 +67,13 @@ export const AutomationTypeCard = ({ type, onCreateClick }) => {
         size="sm" 
         className={`w-full py-0.5 sm:py-1 h-6 sm:h-8 text-[10px] sm:text-sm ${getButtonHoverClass(type.id)}`}
         onClick={() => onCreateClick(type.id)}
+        disabled={isLoading}
       >
-        <Plus className="mr-0.5 sm:mr-1.5 h-2.5 w-2.5 sm:h-3 sm:w-3" />
-        Create
+        {isLoading ? (
+          <><span className="mr-0.5 sm:mr-1.5 h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin inline-block">◌</span> Creating...</>
+        ) : (
+          <><Plus className="mr-0.5 sm:mr-1.5 h-2.5 w-2.5 sm:h-3 sm:w-3" /> Create</>
+        )}
       </Button>
     </motion.div>
   );

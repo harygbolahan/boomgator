@@ -45,7 +45,19 @@ const PlatformIndicator = ({ platforms }) => {
   );
 };
 
-export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, onView }) => {
+export const AutomationCard = ({ 
+  automation, 
+  onStatusChange, 
+  onEdit, 
+  onDelete, 
+  onView,
+  isLoadingStatus = false,
+  isLoadingDelete = false,
+  isLoadingView = false,
+  isLoadingEdit = false,
+  isLoadingDuplicate = false,
+  onDuplicate
+}) => {
   const [isHovered, setIsHovered] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
@@ -92,22 +104,29 @@ export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, o
   };
   
   // Status toggle function
-  const toggleStatus = () => {
+  const toggleStatus = async () => {
     const newStatus = automation.status === "Active" ? "Paused" : "Active";
-    onStatusChange(automation.id, newStatus);
+    await onStatusChange(automation.id, newStatus);
   };
   
   // Delete confirmation
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     setDeleteDialogOpen(false);
-    onDelete(automation.id);
+    await onDelete(automation.id);
   };
   
   // Get the icon info
   const { icon, bg } = getTypeIcon(automation.type);
 
   // Generate automatic card ID
-  const id = automation.id || `auto-${automation.name.replace(/\s+/g, '-').toLowerCase()}`;
+  const id = automation.id || `auto-${(automation.name || 'automation').replace(/\s+/g, '-').toLowerCase()}`;
+
+  // Handle duplication
+  const handleDuplicate = () => {
+    if (onDuplicate) {
+      onDuplicate(automation);
+    }
+  };
 
   return (
     <motion.div 
@@ -156,28 +175,51 @@ export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={toggleStatus} className="cursor-pointer">
-                    {automation.status === "Active" ? (
+                  <DropdownMenuItem onClick={toggleStatus} className="cursor-pointer" disabled={isLoadingStatus}>
+                    {isLoadingStatus ? (
+                      <><span className="mr-2 h-4 w-4 animate-spin">◌</span> Loading...</>
+                    ) : automation.status === "Active" ? (
                       <><Pause className="mr-2 h-4 w-4" /> Pause</>
                     ) : (
                       <><Play className="mr-2 h-4 w-4" /> Activate</>
                     )}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEdit(automation)} className="cursor-pointer">
-                    <Edit className="mr-2 h-4 w-4" /> Edit
+                  <DropdownMenuItem onClick={() => onEdit(automation)} className="cursor-pointer" disabled={isLoadingEdit}>
+                    {isLoadingEdit ? (
+                      <><span className="mr-2 h-4 w-4 animate-spin">◌</span> Loading...</>
+                    ) : (
+                      <><Edit className="mr-2 h-4 w-4" /> Edit</>
+                    )}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onView(automation)} className="cursor-pointer">
-                    <ExternalLink className="mr-2 h-4 w-4" /> View Details
+                  <DropdownMenuItem onClick={() => onView(automation)} className="cursor-pointer" disabled={isLoadingView}>
+                    {isLoadingView ? (
+                      <><span className="mr-2 h-4 w-4 animate-spin">◌</span> Loading...</>
+                    ) : (
+                      <><ExternalLink className="mr-2 h-4 w-4" /> View Details</>
+                    )}
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <Copy className="mr-2 h-4 w-4" /> Duplicate
+                  <DropdownMenuItem 
+                    className="cursor-pointer"
+                    onClick={handleDuplicate}
+                    disabled={isLoadingDuplicate}
+                  >
+                    {isLoadingDuplicate ? (
+                      <><span className="mr-2 h-4 w-4 animate-spin">◌</span> Loading...</>
+                    ) : (
+                      <><Copy className="mr-2 h-4 w-4" /> Duplicate</>
+                    )}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     onClick={() => setDeleteDialogOpen(true)} 
                     className="text-destructive cursor-pointer"
+                    disabled={isLoadingDelete}
                   >
-                    <X className="mr-2 h-4 w-4" /> Delete
+                    {isLoadingDelete ? (
+                      <><span className="mr-2 h-4 w-4 animate-spin">◌</span> Loading...</>
+                    ) : (
+                      <><X className="mr-2 h-4 w-4" /> Delete</>
+                    )}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -228,9 +270,17 @@ export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, o
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogCancel disabled={isLoadingDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isLoadingDelete}
+            >
+              {isLoadingDelete ? (
+                <><span className="mr-2 inline-block animate-spin">◌</span> Deleting...</>
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

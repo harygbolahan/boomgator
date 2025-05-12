@@ -1,120 +1,189 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, AlertCircle, CreditCard, Clock, Zap, HelpCircle } from "lucide-react";
+import { Check, AlertCircle, CreditCard, Clock, Zap, HelpCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function PaymentPlansPage() {
+  const { 
+    allPackages, 
+    userPackage, 
+    loading, 
+    subscribeToPackage, 
+    packageName 
+  } = useSubscription();
+  
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [processingSub, setProcessingSub] = useState(false);
   
-  const plans = [
-    {
-      id: "basic",
-      name: "Basic",
-      description: "Essential tools for social media management",
-      price: {
-        monthly: 29,
-        annually: 24
-      },
-      features: [
-        "Connect up to 5 social profiles",
-        "Basic content scheduling",
-        "Performance analytics",
-        "Mobile app access",
-      ],
-      cta: "Get Started"
-    },
-    {
-      id: "professional",
-      name: "Professional",
-      description: "Advanced features for growing businesses",
-      price: {
-        monthly: 49,
-        annually: 39
-      },
-      features: [
-        "Connect up to 10 social profiles",
-        "Advanced content scheduling",
-        "Detailed performance analytics",
-        "WhatsApp bot (basic)",
-        "Priority support",
-        "Team collaboration (2 users)"
-      ],
-      popular: true,
-      cta: "Upgrade Now"
-    },
-    {
-      id: "business",
-      name: "Business",
-      description: "Complete solution for businesses and agencies",
-      price: {
-        monthly: 99,
-        annually: 79
-      },
-      features: [
-        "Connect unlimited social profiles",
-        "Advanced content scheduling & automation",
-        "Comprehensive analytics dashboard",
-        "WhatsApp bot (advanced)",
-        "Messenger broadcast",
-        "AI content generation",
-        "Instagram viral finder",
-        "Team collaboration (5 users)",
-        "Dedicated account manager"
-      ],
-      cta: "Contact Sales"
+  // Initialize selected plan based on user's current package
+  useEffect(() => {
+    if (userPackage && !selectedPlan) {
+      if (userPackage.package?.toLowerCase().includes('plus')) {
+        setSelectedPlan('plus');
+      } else if (userPackage.package?.toLowerCase().includes('pro')) {
+        setSelectedPlan('pro');
+      } else {
+        setSelectedPlan('trial');
+      }
     }
-  ];
+  }, [userPackage, selectedPlan]);
 
-  const currentPlan = {
-    id: "basic",
-    status: "active",
-    startDate: "2023-06-01",
-    nextBillingDate: "2023-07-01",
-    paymentMethod: "Visa ending in 4242"
+  // Create a dynamic plans array based on API response
+  const formatPackages = () => {
+    if (!allPackages) return [];
+    
+    const formattedPlans = [
+      {
+        id: "trial",
+        name: "Trial",
+        description: "Free trial for testing out features",
+        price: 0,
+        services: allPackages.trial?.map(item => ({
+          name: item.service[0].service,
+          limits: {
+            daily: item.service[0].limit_daily,
+            weekly: item.service[0].limit_weekly,
+            monthly: item.service[0].limit_monthly
+          }
+        })) || [],
+        cta: "Current Plan"
+      }
+    ];
+    
+    // Add Plus package if available
+    if (allPackages.plus?.length > 0) {
+      formattedPlans.push({
+        id: "plus",
+        name: "Plus",
+        description: "Essential tools for social media management",
+        price: allPackages.plus[0].price / 100, // Convert from cents to dollars
+        services: allPackages.plus.map(item => ({
+          name: item.service[0].service,
+          limits: {
+            daily: item.service[0].limit_daily,
+            weekly: item.service[0].limit_weekly,
+            monthly: item.service[0].limit_monthly
+          }
+        })),
+        popular: true,
+        cta: "Upgrade Now"
+      });
+    }
+    
+    // Add Pro package if available
+    if (allPackages.pro?.length > 0) {
+      formattedPlans.push({
+        id: "pro",
+        name: "Pro",
+        description: "Complete solution for businesses and agencies",
+        price: allPackages.pro[0].price / 100, // Convert from cents to dollars
+        services: allPackages.pro.map(item => ({
+          name: item.service[0].service,
+          limits: {
+            daily: item.service[0].limit_daily,
+            weekly: item.service[0].limit_weekly,
+            monthly: item.service[0].limit_monthly
+          }
+        })),
+        cta: "Upgrade Now"
+      });
+    }
+    
+    return formattedPlans;
   };
+  
+  const plans = formatPackages();
 
   const handleSelectPlan = (planId) => {
     setSelectedPlan(planId);
   };
 
-  const handleChangeBillingCycle = (cycle) => {
-    setBillingCycle(cycle);
-  };
-
-  const handleUpgrade = () => {
-    if (!selectedPlan) return;
+  const handleSubscribe = async () => {
+    if (!selectedPlan || selectedPlan === 'trial') return;
     
-    // Simulate payment processing
+    setProcessingSub(true);
     setPaymentStatus("processing");
     
-    setTimeout(() => {
-      setPaymentStatus("success");
+    try {
+      const result = await subscribeToPackage(selectedPlan);
       
-      // Reset after showing success message
+      if (result.success) {
+        setPaymentStatus("success");
+      } else {
+        setPaymentStatus("error");
+      }
+    } catch (error) {
+      console.error("Error subscribing to plan:", error);
+      setPaymentStatus("error");
+    } finally {
+      setProcessingSub(false);
+      
+      // Reset status after showing message
       setTimeout(() => {
         setPaymentStatus(null);
       }, 3000);
-    }, 2000);
+    }
   };
 
-  const calculateSavings = (plan) => {
-    const monthlyCost = plan.price.monthly * 12;
-    const annualCost = plan.price.annually * 12;
-    const savings = monthlyCost - annualCost;
-    const percentage = Math.round((savings / monthlyCost) * 100);
+  // Format service limits to display
+  const formatServiceLimits = (limits) => {
+    if (!limits) return "N/A";
     
-    return `Save ${percentage}%`;
+    const { daily, weekly, monthly } = limits;
+    
+    if (monthly > 0) {
+      return `${monthly} per month`;
+    } else if (weekly > 0) {
+      return `${weekly} per week`;
+    } else if (daily > 0) {
+      return `${daily} per day`;
+    } else {
+      return "Unlimited";
+    }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' });
-  };
+  // Loading skeleton
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <Skeleton className="h-8 w-64 mb-4" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          {[1, 2, 3].map((item) => (
+            <Card key={item} className="w-full">
+              <CardHeader>
+                <Skeleton className="h-6 w-24 mb-2" />
+                <Skeleton className="h-4 w-full" />
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Skeleton className="h-10 w-20" />
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((feature) => (
+                    <Skeleton key={feature} className="h-4 w-full" />
+                  ))}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Skeleton className="h-10 w-full" />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6">
@@ -145,32 +214,22 @@ export function PaymentPlansPage() {
           {paymentStatus === "success" && (
             <Alert className="mb-6 bg-green-50 border-green-200">
               <Check className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-800">Payment Successful</AlertTitle>
+              <AlertTitle className="text-green-800">Subscription Successful</AlertTitle>
               <AlertDescription className="text-green-700">
-                Your plan has been upgraded. You now have access to all new features.
+                Your plan has been updated. You now have access to all new features.
               </AlertDescription>
             </Alert>
           )}
           
-          <div className="flex justify-center mb-8">
-            <div className="bg-muted inline-flex items-center p-1 rounded-lg">
-              <Button
-                variant={billingCycle === "monthly" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => handleChangeBillingCycle("monthly")}
-              >
-                Monthly
-              </Button>
-              <Button
-                variant={billingCycle === "annually" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => handleChangeBillingCycle("annually")}
-              >
-                Annually
-                <Badge className="ml-2 bg-green-100 text-green-800">Save 20%</Badge>
-              </Button>
-            </div>
-          </div>
+          {paymentStatus === "error" && (
+            <Alert className="mb-6 bg-red-50 border-red-200">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertTitle className="text-red-800">Subscription Failed</AlertTitle>
+              <AlertDescription className="text-red-700">
+                There was an error processing your subscription. Please try again or contact support.
+              </AlertDescription>
+            </Alert>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map((plan) => (
@@ -183,6 +242,11 @@ export function PaymentPlansPage() {
                     <Badge className="bg-blue-100 text-blue-800">Most Popular</Badge>
                   </div>
                 )}
+                {packageName?.toLowerCase().includes(plan.id) && (
+                  <div className="absolute -top-4 left-0 right-0 flex justify-center">
+                    <Badge className="bg-green-100 text-green-800">Current Plan</Badge>
+                  </div>
+                )}
                 <CardHeader>
                   <CardTitle>{plan.name}</CardTitle>
                   <CardDescription>{plan.description}</CardDescription>
@@ -190,21 +254,23 @@ export function PaymentPlansPage() {
                 <CardContent className="space-y-6">
                   <div>
                     <p className="text-3xl font-bold">
-                      ${plan.price[billingCycle]}
+                      ${plan.price}
                       <span className="text-sm font-normal text-muted-foreground ml-1">
                         /mo
                       </span>
                     </p>
-                    {billingCycle === "annually" && (
-                      <p className="text-sm text-green-600 mt-1">{calculateSavings(plan)}</p>
-                    )}
                   </div>
                   
                   <ul className="space-y-2">
-                    {plan.features.map((feature, index) => (
+                    {plan.services.map((service, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <Check className="h-4 w-4 mt-1 text-green-500" />
-                        <span className="text-sm">{feature}</span>
+                        <div>
+                          <span className="text-sm font-medium">{service.name}</span>
+                          <p className="text-xs text-muted-foreground">
+                            {formatServiceLimits(service.limits)}
+                          </p>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -212,18 +278,18 @@ export function PaymentPlansPage() {
                 <CardFooter>
                   <Button 
                     className="w-full" 
-                    variant={currentPlan.id === plan.id ? "outline" : "default"}
+                    variant={packageName?.toLowerCase().includes(plan.id) ? "outline" : "default"}
                     onClick={() => handleSelectPlan(plan.id)}
-                    disabled={paymentStatus === "processing" || (currentPlan.id === plan.id && plan.id === "basic")}
+                    disabled={paymentStatus === "processing" || (packageName?.toLowerCase().includes(plan.id))}
                   >
-                    {currentPlan.id === plan.id ? "Current Plan" : plan.cta}
+                    {packageName?.toLowerCase().includes(plan.id) ? "Current Plan" : plan.cta}
                   </Button>
                 </CardFooter>
               </Card>
             ))}
           </div>
           
-          {selectedPlan && selectedPlan !== currentPlan.id && (
+          {selectedPlan && !packageName?.toLowerCase().includes(selectedPlan) && (
             <div className="mt-8 flex justify-center">
               <Card className="w-full max-w-2xl">
                 <CardHeader>
@@ -236,46 +302,31 @@ export function PaymentPlansPage() {
                   <div className="bg-muted p-4 rounded-lg">
                     <div className="flex justify-between mb-2">
                       <span className="text-sm font-medium">Current Plan</span>
-                      <span className="text-sm">{plans.find(p => p.id === currentPlan.id)?.name}</span>
+                      <span className="text-sm">{packageName}</span>
                     </div>
                     <div className="flex justify-between mb-2">
                       <span className="text-sm font-medium">New Plan</span>
                       <span className="text-sm font-medium">{plans.find(p => p.id === selectedPlan)?.name}</span>
                     </div>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium">Billing Cycle</span>
-                      <span className="text-sm capitalize">{billingCycle}</span>
-                    </div>
                     <div className="flex justify-between pt-2 border-t">
-                      <span className="text-sm font-medium">Amount</span>
-                      <span className="text-sm font-medium">
-                        ${plans.find(p => p.id === selectedPlan)?.price[billingCycle]}/mo
-                      </span>
+                      <span className="text-sm font-medium">New Monthly Price</span>
+                      <span className="text-sm font-medium">${plans.find(p => p.id === selectedPlan)?.price}/mo</span>
                     </div>
                   </div>
-                  
-                  <Alert className="bg-yellow-50 border-yellow-200">
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-700">
-                      Your plan will be upgraded immediately and you'll be charged the prorated amount for the remainder of your billing cycle.
-                    </AlertDescription>
-                  </Alert>
                 </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button variant="outline" onClick={() => setSelectedPlan(null)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleUpgrade} disabled={paymentStatus === "processing"}>
-                    {paymentStatus === "processing" ? (
+                <CardFooter className="flex justify-end">
+                  <Button 
+                    onClick={handleSubscribe} 
+                    disabled={processingSub}
+                    className="w-full md:w-auto"
+                  >
+                    {processingSub ? (
                       <>
-                        <span className="animate-spin mr-2">⟳</span>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing...
                       </>
                     ) : (
-                      <>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Confirm Upgrade
-                      </>
+                      "Confirm Subscription"
                     )}
                   </Button>
                 </CardFooter>
@@ -285,146 +336,61 @@ export function PaymentPlansPage() {
         </TabsContent>
         
         <TabsContent value="billing">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Subscription Details</CardTitle>
-                <CardDescription>
-                  Manage your subscription and billing information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Current Plan</p>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold">{plans.find(p => p.id === currentPlan.id)?.name}</h3>
-                    <Badge className="bg-green-100 text-green-800">Active</Badge>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-sm font-medium mb-1">Started On</p>
-                    <p>{formatDate(currentPlan.startDate)}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium mb-1">Next Billing Date</p>
-                    <div className="flex items-center gap-2">
-                      <p>{formatDate(currentPlan.nextBillingDate)}</p>
-                      <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Upcoming</span>
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium mb-1">Payment Method</p>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    <p>{currentPlan.paymentMethod}</p>
-                    <Button variant="ghost" size="sm" className="h-8 ml-2">
-                      Update
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between border-t pt-6">
-                <Button variant="outline">Cancel Subscription</Button>
-                <Button variant="default">Change Plan</Button>
-              </CardFooter>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Need Help?</CardTitle>
-                <CardDescription>
-                  Get assistance with billing and subscription issues
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-orange-500" />
-                    Billing Questions
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Have questions about your bill or need to update payment info?
-                  </p>
-                  <Button variant="outline" size="sm">Contact Billing Support</Button>
-                </div>
-                
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2 flex items-center gap-2">
-                    <HelpCircle className="h-4 w-4 text-blue-500" />
-                    Plan Assistance
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Need help choosing the right plan for your business?
-                  </p>
-                  <Button variant="outline" size="sm">Schedule Consultation</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Card className="mt-6">
+          <Card>
             <CardHeader>
-              <CardTitle>Billing History</CardTitle>
-              <CardDescription>
-                View and download your past invoices
-              </CardDescription>
+              <CardTitle>Subscription Details</CardTitle>
+              <CardDescription>Manage your current subscription</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-medium">Date</th>
-                      <th className="text-left py-3 px-4 font-medium">Invoice</th>
-                      <th className="text-left py-3 px-4 font-medium">Amount</th>
-                      <th className="text-left py-3 px-4 font-medium">Status</th>
-                      <th className="text-right py-3 px-4 font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    <tr className="hover:bg-muted/50">
-                      <td className="py-3 px-4">Jun 1, 2023</td>
-                      <td className="py-3 px-4">INV-001234</td>
-                      <td className="py-3 px-4">$29.00</td>
-                      <td className="py-3 px-4">
-                        <Badge className="bg-green-100 text-green-800">Paid</Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="sm">Download</Button>
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-muted/50">
-                      <td className="py-3 px-4">May 1, 2023</td>
-                      <td className="py-3 px-4">INV-001198</td>
-                      <td className="py-3 px-4">$29.00</td>
-                      <td className="py-3 px-4">
-                        <Badge className="bg-green-100 text-green-800">Paid</Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="sm">Download</Button>
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-muted/50">
-                      <td className="py-3 px-4">Apr 1, 2023</td>
-                      <td className="py-3 px-4">INV-001154</td>
-                      <td className="py-3 px-4">$29.00</td>
-                      <td className="py-3 px-4">
-                        <Badge className="bg-green-100 text-green-800">Paid</Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="sm">Download</Button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex-1 border rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Current Plan</h3>
+                  <p className="text-xl font-semibold">{packageName}</p>
+                </div>
+
+                <div className="flex-1 border rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Billing Cycle</h3>
+                  <p className="text-xl font-semibold">Monthly</p>
+                </div>
+
+                <div className="flex-1 border rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Next Billing Date</h3>
+                  <p className="text-xl font-semibold">-</p>
+                </div>
+              </div>
+              
+              <div className="border rounded-lg divide-y">
+                <div className="p-4">
+                  <h2 className="font-medium mb-4">Your Features</h2>
+                  
+                  <ul className="space-y-4">
+                    {userPackage?.service?.map((service, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 mt-1 text-green-500" />
+                        <div>
+                          <span className="text-sm font-medium">{service.service}</span>
+                          <div className="flex gap-4 mt-1">
+                            {service.limit_daily > 0 && (
+                              <span className="text-xs px-2 py-1 bg-muted rounded">
+                                {service.limit_daily}/day
+                              </span>
+                            )}
+                            {service.limit_weekly > 0 && (
+                              <span className="text-xs px-2 py-1 bg-muted rounded">
+                                {service.limit_weekly}/week
+                              </span>
+                            )}
+                            {service.limit_monthly > 0 && (
+                              <span className="text-xs px-2 py-1 bg-muted rounded">
+                                {service.limit_monthly}/month
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </CardContent>
           </Card>

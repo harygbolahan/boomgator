@@ -13,7 +13,8 @@ export const AutomationDialog = ({
   automation, 
   setAutomation, 
   onSave,
-  platforms = []
+  platforms = [],
+  isLoading = false
 }) => {
   // Check if form is valid
   const isValid = Boolean(
@@ -26,7 +27,7 @@ export const AutomationDialog = ({
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isValid) {
+    if (isValid && !isLoading) {
       // Add status if not present
       const automationToSave = {
         ...automation,
@@ -41,7 +42,7 @@ export const AutomationDialog = ({
   const isNew = automation.isNew;
   
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(value) => !isLoading && onOpenChange(value)}>
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -67,6 +68,7 @@ export const AutomationDialog = ({
                   name: e.target.value 
                 })}
                 required
+                disabled={isLoading}
               />
             </div>
             
@@ -80,6 +82,7 @@ export const AutomationDialog = ({
                     type: value 
                   })}
                   required
+                  disabled={isLoading}
                 >
                   <SelectTrigger id="type">
                     <SelectValue placeholder="Select type" />
@@ -102,6 +105,7 @@ export const AutomationDialog = ({
                     platform: value 
                   })}
                   required
+                  disabled={isLoading}
                 >
                   <SelectTrigger id="platform">
                     <SelectValue placeholder="Select platform" />
@@ -135,6 +139,7 @@ export const AutomationDialog = ({
                   incoming: e.target.value 
                 })}
                 required
+                disabled={isLoading}
               />
               <p className="text-[0.8rem] text-muted-foreground">
                 Define what incoming message will trigger this automation
@@ -153,6 +158,7 @@ export const AutomationDialog = ({
                   content: e.target.value 
                 })}
                 required
+                disabled={isLoading}
               />
               <p className="text-[0.8rem] text-muted-foreground">
                 Specify the message that will be sent in response
@@ -167,6 +173,15 @@ export const AutomationDialog = ({
                 </AlertDescription>
               </Alert>
             )}
+
+            {isLoading && (
+              <Alert className="mt-2 bg-blue-50 text-blue-800 border-blue-200">
+                <div className="h-4 w-4 animate-spin inline-block mr-2">◌</div>
+                <AlertDescription>
+                  Saving your automation...
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           
           <DialogFooter>
@@ -174,15 +189,19 @@ export const AutomationDialog = ({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={isLoading}
             >
               Cancel
             </Button>
             <Button 
               type="submit"
-              disabled={!isValid}
+              disabled={!isValid || isLoading}
             >
-              <Check className="mr-1.5 h-4 w-4" />
-              {isNew ? "Create" : "Save Changes"}
+              {isLoading ? (
+                <><span className="mr-1.5 h-4 w-4 animate-spin inline-block">◌</span> Saving...</>
+              ) : (
+                <><Check className="mr-1.5 h-4 w-4" /> {isNew ? "Create" : "Save Changes"}</>
+              )}
             </Button>
           </DialogFooter>
         </form>

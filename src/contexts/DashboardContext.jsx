@@ -62,6 +62,8 @@ export const DashboardProvider = ({ children }) => {
         type: ACTIONS.FETCH_ACCOUNT_SUCCESS, 
         payload: response 
       });
+
+      return response?.data;
     } catch (error) {
       dispatch({ 
         type: ACTIONS.FETCH_ACCOUNT_ERROR, 
@@ -83,6 +85,9 @@ export const DashboardProvider = ({ children }) => {
         type: ACTIONS.FETCH_HOME_SUCCESS, 
         payload: response 
       });
+
+      return response?.data;
+
     } catch (error) {
       dispatch({ 
         type: ACTIONS.FETCH_HOME_ERROR, 

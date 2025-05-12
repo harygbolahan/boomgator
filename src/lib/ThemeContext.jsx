@@ -6,10 +6,7 @@ export function ThemeProvider({ children }) {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Check local storage for existing theme preference
     const savedTheme = localStorage.getItem('theme');
-    // Check system preference if no saved preference
-    if (!savedTheme) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
+    // Default to light mode instead of system preference
     return savedTheme === 'dark';
   });
 

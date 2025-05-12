@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, memo, useCallback, useMemo } from "react";
 import { useTheme } from "@/lib/ThemeContext";
+import { toast } from "react-toastify";
 import { 
   LayoutDashboard, 
   Share2, 
@@ -27,31 +28,37 @@ import {
   CreditCard,
   Instagram,
   BookOpen,
-  Sparkles
+  Sparkles,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { PageNavigation } from "../PageNavigation";
 import { UserMenu } from "./UserMenu";
+import SubscriptionStatus from "../ui/SubscriptionStatus";
 
-// Memoize the nav items to prevent recreating the array on each render
+// Group nav items by category for better organization
 const navItems = [
-  { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-  // { name: "Social Hub", path: "/social-hub", icon: <Share2 className="w-5 h-5" /> },
-  { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-5 h-5" /> },
-  { name: "AI Content Creator", path: "/ai-content-creator", icon: <Sparkles className="w-5 h-5" /> },
-  { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" /> },
-  // { name: "Calendar", path: "/calendar", icon: <Calendar className="w-5 h-5" /> },
-  // { name: "Analytics", path: "/analytics", icon: <BarChart2 className="w-5 h-5" /> },
-  { name: "Instagram Viral Finder", path: "/instagram-viral-finder", icon: <Instagram className="w-5 h-5" /> },
-  { name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" /> },
-  { name: "Messenger Broadcast", path: "/messenger-broadcast", icon: <MessageSquare className="w-5 h-5" /> },
-  { name: "Enhancements", path: "/enhancements", icon: <Sparkles className="w-5 h-5" /> },
-  // { name: "Notifications", path: "/notifications", icon: <Bell className="w-5 h-5" /> },
-  // { name: "Payment Plans", path: "/payment-plans", icon: <CreditCard className="w-5 h-5" /> },
-  // { name: "Setup Guide", path: "/setup-guide", icon: <BookOpen className="w-5 h-5" /> },
-  // { name: "Account", path: "/account", icon: <UserCircle className="w-5 h-5" /> },
-  // { name: "Support", path: "/support", icon: <LifeBuoy className="w-5 h-5" /> },
-  { name: "WhatsApp Bot", path: "/whatsapp-bot", icon: <Bot className="w-5 h-5" /> },
-  { name: "Logout", path: "/logout", icon: <LogOut className="w-5 h-5" /> },
+  { 
+    category: "Main",
+    items: [
+      { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+      { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-5 h-5" /> },
+    ]
+  },
+  {
+    category: "Tools",
+    items: [
+      { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" /> },
+      { name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" /> },
+      { name: "Enhancements", path: "/enhancements", icon: <Sparkles className="w-5 h-5" /> },
+    ]
+  },
+  {
+    category: "Account",
+    items: [
+      { name: "Logout", path: "/logout", icon: <LogOut className="w-5 h-5" /> }
+    ]
+  }
 ];
 
 // Fake notifications data - moved outside component to prevent recreation
@@ -130,24 +137,53 @@ const NotificationItem = memo(({ notification, onMarkAsRead }) => {
   );
 });
 
-// Memoized navigation item component
-const NavItem = memo(({ item, isActive, onClick }) => {
+// Memoized navigation item component with tooltip for collapsed mode
+const NavItem = memo(({ item, isActive, onClick, isCollapsed, isDarkMode }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
   const handleClick = useCallback(() => {
     onClick(item);
   }, [item, onClick]);
   
+  const handleMouseEnter = useCallback(() => {
+    if (isCollapsed) setShowTooltip(true);
+  }, [isCollapsed]);
+  
+  const handleMouseLeave = useCallback(() => {
+    setShowTooltip(false);
+  }, []);
+  
   return (
-    <button
-      onClick={handleClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-        isActive 
-          ? `bg-indigo-900/40 text-indigo-400 dark:bg-indigo-900/40 dark:text-indigo-400 font-medium` 
-          : `text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white`
-      }`}
-    >
-      {item.icon}
-      <span>{item.name}</span>
-    </button>
+    <div className="relative">
+      <button
+        onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onFocus={handleMouseEnter}
+        onBlur={handleMouseLeave}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+          isActive 
+            ? `bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-medium ring-1 ring-indigo-200 dark:ring-indigo-800` 
+            : `text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700/50 dark:hover:text-white`
+        } ${item.path === '/logout' ? (isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700') : ''}`}
+        aria-label={item.name}
+      >
+        <span className={`${isCollapsed ? 'mx-auto' : ''}`}>
+          {item.icon}
+        </span>
+        {!isCollapsed && <span>{item.name}</span>}
+      </button>
+      
+      {/* Tooltip for collapsed mode */}
+      {isCollapsed && showTooltip && (
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50">
+          <div className="bg-gray-900 text-white text-sm px-2 py-1 rounded shadow-lg whitespace-nowrap">
+            {item.name}
+            <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 });
 
@@ -160,6 +196,7 @@ function Layout() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userNotifications, setUserNotifications] = useState(notifications);
   const [isPageLoading, setIsPageLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   
   const toggleSidebar = useCallback(() => {
     setIsSidebarCollapsed(prev => !prev);
@@ -174,10 +211,21 @@ function Layout() {
   }, []);
   
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("hasCompletedSetup");
-    navigate("/login");
-  }, [navigate]);
+    // Clear all localStorage data
+    localStorage.clear();
+    
+    // Reset any in-memory state
+    setUserNotifications([]);
+    setNotificationsOpen(false);
+    setMobileMenuOpen(false);
+    setIsPageLoading(false);
+    
+    // Show success toast notification
+    toast.info('Logged out successfully');
+    
+    // Perform a page refresh and redirect to login
+    window.location.href = "/login";
+  }, []);
 
   const handleNavItemClick = useCallback((item) => {
     if (item.path === "/logout") {
@@ -295,42 +343,47 @@ function Layout() {
               <button 
                 onClick={() => setMobileMenuOpen(false)}
                 className={`p-2 rounded-lg ${isDarkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto py-4">
-              <nav className="px-4 space-y-2">
-                {navItems.map((item) => (
-                  <button
-                    key={item.path}
-                    onClick={() => handleNavItemClick(item)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      location.pathname === item.path 
-                        ? `${isDarkMode 
-                          ? 'bg-indigo-900/40 text-indigo-400' 
-                          : 'bg-indigo-50 text-indigo-700'} font-medium` 
-                        : `${isDarkMode 
-                          ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
-                    }`}
-                  >
-                    {item.icon}
-                    <span>{item.name}</span>
-                  </button>
+              <nav className="px-4 space-y-6">
+                {navItems.map((section, index) => (
+                  <div key={`section-${index}`} className="space-y-2">
+                    <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 px-4">
+                      {section.category}
+                    </h3>
+                    {section.items.map((item) => (
+                      <button
+                        key={item.path}
+                        onClick={() => handleNavItemClick(item)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                          location.pathname === item.path 
+                            ? `bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-medium ring-1 ring-indigo-200 dark:ring-indigo-800` 
+                            : `text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700/50 dark:hover:text-white`
+                        } ${item.path === '/logout' ? (isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700') : ''}`}
+                      >
+                        {item.icon}
+                        <span>{item.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </nav>
             </div>
 
-            <div className={`p-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-t`}>
+            <div className={`p-4 ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50/50'} border-t`}>
               <button
                 onClick={toggleDarkMode}
                 className={`w-full px-4 py-3 rounded-lg flex items-center gap-3 ${
                   isDarkMode 
-                    ? 'text-yellow-300 hover:bg-gray-700' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                    ? 'text-yellow-300 hover:bg-gray-700/70' 
+                    : 'text-gray-600 hover:bg-gray-100/70'
+                } transition-colors`}
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
@@ -343,7 +396,7 @@ function Layout() {
         <aside 
           className={`hidden md:block fixed h-screen ${
             isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-          } border-r shadow-sm overflow-y-auto z-20 flex-shrink-0`}
+          } border-r shadow-sm overflow-y-auto z-20 flex-shrink-0 transition-all duration-300 ease-in-out`}
           style={desktopSidebarStyles}
         >
           <div className="flex flex-col h-full">
@@ -362,45 +415,53 @@ function Layout() {
                 onClick={toggleSidebar}
                 className={`${
                   isDarkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'
-                } p-2 rounded-lg`}
+                } p-2 rounded-lg transition-colors`}
+                aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
                 <Menu className="w-5 h-5" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto py-4">
-              <nav className={`px-3 space-y-2 ${isSidebarCollapsed ? 'text-center' : ''}`}>
-                {navItems.map((item) => (
-                  <button
-                    key={item.path}
-                    onClick={() => handleNavItemClick(item)}
-                    className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-lg transition-colors ${
-                      location.pathname === item.path 
-                        ? `${isDarkMode 
-                          ? 'bg-indigo-900/40 text-indigo-400' 
-                          : 'bg-indigo-50 text-indigo-700'} font-medium` 
-                        : `${isDarkMode 
-                          ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
-                    } ${item.path === '/logout' ? (isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700') : ''}`}
-                  >
-                    {item.icon}
-                    {!isSidebarCollapsed && <span>{item.name}</span>}
-                  </button>
+              <nav className={`px-3 space-y-6 ${isSidebarCollapsed ? 'text-center' : ''}`}>
+                {navItems.map((section, index) => (
+                  <div key={`section-${index}`} className="space-y-2">
+                    {!isSidebarCollapsed && (
+                      <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 px-4 mb-2">
+                        {section.category}
+                      </h3>
+                    )}
+                    {section.items.map((item) => (
+                      <NavItem 
+                        key={item.path}
+                        item={item}
+                        isActive={location.pathname === item.path}
+                        onClick={handleNavItemClick}
+                        isCollapsed={isSidebarCollapsed}
+                        isDarkMode={isDarkMode}
+                      />
+                    ))}
+                    {!isSidebarCollapsed && index < navItems.length - 1 && (
+                      <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-2"></div>
+                    )}
+                  </div>
                 ))}
               </nav>
             </div>
 
-            <div className={`p-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-t`}>
+            <div className={`p-4 ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50/50'} border-t transition-colors`}>
               <button
                 onClick={toggleDarkMode}
                 className={`w-full ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-lg flex items-center ${
                   isDarkMode 
-                    ? 'text-yellow-300 hover:bg-gray-700' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                    ? 'text-yellow-300 hover:bg-gray-700/70' 
+                    : 'text-gray-600 hover:bg-gray-100/70'
+                } transition-colors`}
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
               >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                <span className={`${isSidebarCollapsed ? 'mx-auto' : ''}`}>
+                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </span>
                 {!isSidebarCollapsed && <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>}
               </button>
             </div>
@@ -413,81 +474,105 @@ function Layout() {
         }`}>
           
           {/* Header */}
-          <header className={`sticky top-0 z-30 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} h-16 flex items-center justify-between px-4 sm:px-6`}>
-            {/* Mobile menu button */}
-            <button 
-              onClick={toggleMobileMenu}
-              className={`p-2 rounded-lg md:hidden ${isDarkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-
-            {/* Spacer for desktop (optional) */}
-            <div className="hidden md:block flex-1"></div>
-            
-            {/* Header Right Section (Notifications, User Menu) */}
-            <div className="relative flex items-center gap-3 sm:gap-4">
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/90 dark:bg-gray-800/90 px-4 sm:px-6 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-800/60 shadow-sm">
+            <div className="flex items-center gap-2">
+              {/* Mobile menu button */}
+              <button
+                onClick={toggleMobileMenu}
+                className="inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 md:hidden mr-2 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+                aria-label="Open menu"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
               
-              {/* Notifications Button Container (No longer relative) */}
-              <div> 
+              {/* Logo and toggle button for larger screens */}
+              
+            </div>
+            
+            {/* Right side actions */}
+            <div className="flex items-center gap-3">
+              {/* Subscription Status */}
+              {/* <div className="hidden sm:block">
+                <div className="flex items-center px-3 py-1.5 bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded-md text-xs font-medium border border-indigo-200 dark:border-indigo-800">
+                  PRO PACKAGE
+                </div>
+              </div>
+               */}
+              
+              {/* Notifications */}
+              <div className="relative">
                 <button
                   onClick={toggleNotifications}
-                  className={`p-2 rounded-full relative ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 transition-colors"
                   aria-label="Notifications"
                 >
-                  <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 border-2 border-white dark:border-gray-800" />
+                    <span className="absolute top-[-8px] right-[-4px]  flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white ring-2 ring-white dark:ring-gray-800">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
                   )}
                 </button>
+                
+                {/* Notifications dropdown */}
+                {notificationsOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-30" 
+                      onClick={() => setNotificationsOpen(false)}
+                      aria-hidden="true"
+                    />
+                    <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-lg border bg-white dark:bg-gray-800 shadow-lg z-40 animate-in fade-in-05 slide-in-from-top-2 dark:border-gray-700">
+                      <div className="flex items-center justify-between border-b px-4 py-3 dark:border-gray-700">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            aria-label="Mark all as read"
+                          >
+                            Mark all read
+                          </button>
+                          <button
+                            onClick={toggleNotifications}
+                            className="rounded-full p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+                            aria-label="Close notifications"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="divide-y dark:divide-gray-700 max-h-[60vh] overflow-auto">
+                        {userNotifications.length > 0 ? (
+                          userNotifications.map(notification => (
+                            <NotificationItem 
+                              key={notification.id} 
+                              notification={notification}
+                              onMarkAsRead={markAsRead}
+                            />
+                          ))
+                        ) : (
+                          <div className="py-8 text-center">
+                            <p className="text-gray-500 dark:text-gray-400">No notifications</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-center border-t dark:border-gray-700">
+                        <Link
+                          to="/notifications"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                          View all notifications
+                        </Link>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-
-              {/* User avatar and menu (UserMenu component) */}
+              
+              {/* User menu */}
               <UserMenu />
-
-              {/* Notifications Popover (Moved here, outside the button's div) */}
-              {notificationsOpen && (
-                <div 
-                  className={`absolute right-0 top-full mt-2 w-72 sm:w-80 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg overflow-hidden z-40 border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}
-                  // Add click outside handling if needed, or rely on the overlay below
-                >
-                  <div className={`flex justify-between items-center p-3 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-b`}>
-                    <h3 className="text-sm font-medium">Notifications</h3>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className={`text-xs ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {userNotifications.length === 0 ? (
-                      <p className={`p-4 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No new notifications</p>
-                    ) : (
-                      userNotifications.map((notification) => (
-                        <NotificationItem 
-                          key={notification.id} 
-                          notification={notification}
-                          onMarkAsRead={markAsRead}
-                        />
-                      ))
-                    )}
-                  </div>
-                  <div className={`p-3 text-center ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-t`}>
-                    <button
-                      onClick={() => {
-                        navigate('/notifications');
-                        setNotificationsOpen(false);
-                      }}
-                      className={`text-sm ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
-                    >
-                      View all notifications
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </header>
           
