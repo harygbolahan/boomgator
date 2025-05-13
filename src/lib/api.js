@@ -34,14 +34,26 @@ const setAuthToken = (token) => {
 apiClient.interceptors.response.use(
   response => response, // Pass successful responses through unchanged
   error => {
-    // Check for unauthorized error (401)
-    if (error.response && error.response.status === 401) {
-      console.error('Authentication error detected in API request:', error.response.data);
+    // Check for unauthorized error (401) or "Unauthenticated" message
+    const isAuthError = 
+      (error.response && error.response.status === 401) || 
+      (error.response?.data?.message === 'Unauthenticated.') ||
+      (error.response?.data?.message && error.response?.data?.message.includes('Unauthenticated'));
+    
+    if (isAuthError) {
+      console.error('Authentication error detected in API request:', error.response?.data);
       
-      // Only attempt logout if handler is set and we have a token (we were previously authenticated)
-      if (logoutHandler && authToken) {
+      // Always attempt logout if we have a token (we were previously authenticated)
+      if (authToken) {
         console.log('Logging out user due to authentication error');
-        logoutHandler();
+        
+        // If logout handler is set, use it
+        if (logoutHandler) {
+          logoutHandler();
+        } else {
+          // Otherwise, manually clear auth data
+          authService.logout();
+        }
         
         // If app uses client-side routing, redirect to login
         if (window.location.pathname !== '/auth/login' && window.location.pathname !== '/login') {
@@ -64,7 +76,8 @@ const schedulerService = {
       return response.data.data || response.data;
     } catch (error) {
       console.error('Error fetching scheduled posts:', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -75,7 +88,8 @@ const schedulerService = {
       return response.data.data || response.data;
     } catch (error) {
       console.error(`Error fetching post #${postId}:`, error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -126,7 +140,8 @@ const schedulerService = {
         console.error('Error setting up request:', error.message);
       }
       
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -137,7 +152,8 @@ const schedulerService = {
       return response.data;
     } catch (error) {
       console.error(`Error updating post #${postId}:`, error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -148,7 +164,8 @@ const schedulerService = {
       return response.data;
     } catch (error) {
       console.error(`Error deleting post #${postId}:`, error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   }
 };
@@ -215,20 +232,11 @@ const authService = {
       console.error('Login error:', error);
       
       // Extract the most specific error message
-      if (error.response?.data?.message) {
-        const serverError = new Error(error.response.data.message);
-        serverError.response = error.response;
-        serverError.status = error.response.status;
-        throw serverError;
-      } else if (error.response?.status === 401) {
-        // For 401 errors without a specific message
-        const authError = new Error('Invalid email or password');
-        authError.response = error.response;
-        authError.status = 401;
-        throw authError;
-      }
-      
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      const serverError = new Error(errorMessage);
+      serverError.response = error.response;
+      serverError.status = error?.response?.status;
+      throw serverError;
     }
   },
 
@@ -241,14 +249,11 @@ const authService = {
       console.error('Registration error:', error);
       
       // Extract the most specific error message
-      if (error.response?.data?.message) {
-        const serverError = new Error(error.response.data.message);
-        serverError.response = error.response;
-        serverError.status = error.response.status;
-        throw serverError;
-      }
-      
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      const serverError = new Error(errorMessage);
+      serverError.response = error.response;
+      serverError.status = error?.response?.status;
+      throw serverError;
     }
   },
 
@@ -471,11 +476,12 @@ export const commentRepliesService = {
     try {
       console.log('commentRepliesService: Fetching all comment replies');
       const response = await apiClient.get('/comment-replies');
-      console.log('commentRepliesService: Comment replies received', response);
-      return response;
+      console.log('commentRepliesService: Comment replies received', response.data);
+      return response.data;
     } catch (error) {
       console.error('commentRepliesService: Error fetching comment replies', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
   
@@ -484,11 +490,12 @@ export const commentRepliesService = {
     try {
       console.log(`commentRepliesService: Fetching replies for comment ID ${commentId}`);
       const response = await apiClient.post('/comment-replies/comment', { comment_id: commentId });
-      console.log('commentRepliesService: Comment replies by ID received', response);
-      return response;
+      console.log('commentRepliesService: Comment replies by ID received', response.data);
+      return response.data;
     } catch (error) {
       console.error('commentRepliesService: Error fetching comment replies by ID', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
   
@@ -497,11 +504,12 @@ export const commentRepliesService = {
     try {
       console.log('commentRepliesService: Adding new comment reply', commentData);
       const response = await apiClient.post('/add-comment', commentData);
-      console.log('commentRepliesService: Comment reply added successfully', response);
-      return response;
+      console.log('commentRepliesService: Comment reply added successfully', response.data);
+      return response.data;
     } catch (error) {
       console.error('commentRepliesService: Error adding comment reply', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   }
 };
@@ -548,7 +556,8 @@ export const integrationService = {
       }));
     } catch (error) {
       console.error('integrationService: Error fetching platforms', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -597,13 +606,15 @@ export const integrationService = {
             return callbackData;
           } catch (error) {
             console.error('integrationService: Error in callback handling', error);
-            throw error;
+            const errorMessage = error?.response?.data?.message || error.message;
+            throw new Error(errorMessage);
           }
         }
       };
     } catch (error) {
       console.error('integrationService: Error connecting platform', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -635,7 +646,8 @@ export const integrationService = {
       return responseData;
     } catch (error) {
       console.error('integrationService: Error disconnecting platform', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -651,7 +663,8 @@ export const integrationService = {
       return platform;
     } catch (error) {
       console.error(`integrationService: Error fetching platform with ID ${id}`, error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
   
@@ -666,7 +679,8 @@ export const integrationService = {
       return Array.isArray(pages) ? pages : [];
     } catch (error) {
       console.error('integrationService: Error fetching platform pages', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
   
@@ -681,7 +695,8 @@ export const integrationService = {
       return Array.isArray(posts) ? posts : [];
     } catch (error) {
       console.error('integrationService: Error fetching all page posts', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
   
@@ -696,7 +711,8 @@ export const integrationService = {
       return Array.isArray(posts) ? posts : [];
     } catch (error) {
       console.error(`integrationService: Error fetching posts for page ID ${pageId}`, error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
   
@@ -711,7 +727,8 @@ export const integrationService = {
       return result;
     } catch (error) {
       console.error(`integrationService: Error syncing posts for page ID ${pageId}`, error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   }
 };
@@ -727,7 +744,8 @@ export const subscriptionService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching subscription packages:', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -738,7 +756,8 @@ export const subscriptionService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching user subscription:', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   },
 
@@ -749,7 +768,8 @@ export const subscriptionService = {
       return response.data;
     } catch (error) {
       console.error('Error subscribing to package:', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error.message;
+      throw new Error(errorMessage);
     }
   }
 };

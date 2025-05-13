@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, X, Send, MessageSquare, ArrowLeft, UserCircle } from "lucide-react";
+import { Search, Filter, X, Send, MessageSquare, ArrowLeft, UserCircle, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { Input } from "@/components/ui/input";
@@ -22,12 +22,12 @@ const replyTypes = [
   { value: "fan", label: "Fan", color: "bg-purple-500" }
 ];
 
-// Platform mapping - consistent with other components
+// Platform mapping - consistent with API responses
 const PLATFORMS = {
-  "398280132": "Facebook",
-  "398280133": "Instagram",
-  "398280134": "Twitter",
-  "398280135": "LinkedIn"
+  "1": "Facebook",
+  "2": "Instagram",
+  "3": "Twitter",
+  "4": "LinkedIn"
 };
 
 // Empty state component
@@ -109,8 +109,8 @@ const ReplyDialog = ({ open, onOpenChange, comment, onSubmit }) => {
     
     try {
       await onSubmit({
-        comment_id: comment?.comment_id,
-        platform_id: comment?.platform_id,
+        comment_id: parseInt(comment?.comment_id, 10),
+        platform_id: parseInt(comment?.platform_id, 10),
         content: content,
         reply: replyType
       });
@@ -198,6 +198,9 @@ const ActiveFilters = ({ filters, onClearFilter, onClearAll }) => {
           <X 
             className="h-3 w-3 cursor-pointer ml-1" 
             onClick={() => onClearFilter('platform')}
+            onKeyDown={(e) => e.key === 'Enter' && onClearFilter('platform')}
+            tabIndex={0}
+            aria-label="Clear platform filter"
           />
         </Badge>
       )}
@@ -208,6 +211,9 @@ const ActiveFilters = ({ filters, onClearFilter, onClearAll }) => {
           <X 
             className="h-3 w-3 cursor-pointer ml-1" 
             onClick={() => onClearFilter('replyType')}
+            onKeyDown={(e) => e.key === 'Enter' && onClearFilter('replyType')}
+            tabIndex={0}
+            aria-label="Clear reply type filter"
           />
         </Badge>
       )}
@@ -218,6 +224,9 @@ const ActiveFilters = ({ filters, onClearFilter, onClearAll }) => {
           <X 
             className="h-3 w-3 cursor-pointer ml-1" 
             onClick={() => onClearFilter('search')}
+            onKeyDown={(e) => e.key === 'Enter' && onClearFilter('search')}
+            tabIndex={0}
+            aria-label="Clear search filter"
           />
         </Badge>
       )}
@@ -248,12 +257,12 @@ const CommentDetailsView = ({ comment, onBack, onReply }) => {
         setLoading(true);
         const data = await commentRepliesService.getCommentRepliesByCommentId(comment.comment_id);
         
-        // Filter out the current comment
-        const filteredComments = data.filter(c => c.id !== comment.id);
+        // Filter out the current comment if needed
+        const filteredComments = Array.isArray(data) ? data.filter(c => c.id !== comment.id) : [];
         setRelatedComments(filteredComments);
       } catch (error) {
         console.error("Error fetching related comments:", error);
-        toast.error("Failed to load related comments");
+        toast.error(`Failed to load related comments: ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -363,7 +372,7 @@ export const CommentReplies = () => {
       setComments(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching comments:", error);
-      toast.error("Failed to load comments");
+      toast.error(`Failed to load comments: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -380,12 +389,30 @@ export const CommentReplies = () => {
     try {
       const response = await commentRepliesService.addCommentReply(replyData);
       
-      // Update the comments list with the new reply
-      setComments(prevComments => [response.data, ...prevComments]);
+      // Check if the response contains data
+      if (response) {
+        // Add the new reply to the comments list
+        const newReply = response.data || response;
+        setComments(prevComments => [newReply, ...prevComments]);
+        
+        // If in detail view for this comment, refresh related comments
+        if (currentComment && currentComment.comment_id === replyData.comment_id) {
+          try {
+            const relatedData = await commentRepliesService.getCommentRepliesByCommentId(replyData.comment_id);
+            if (relatedData) {
+              // Force re-render of the comment details view with updated data
+              setCurrentComment(prev => ({...prev}));
+            }
+          } catch (err) {
+            console.error("Error fetching related comments:", err);
+          }
+        }
+      }
       
       return response;
     } catch (error) {
       console.error("Error adding reply:", error);
+      toast.error(`Error adding reply: ${error.message}`);
       throw error;
     }
   };
@@ -503,6 +530,16 @@ export const CommentReplies = () => {
             View and respond to comments across your social media platforms
           </p>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex items-center gap-2"
+          onClick={fetchComments}
+          disabled={loading}
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {!selectedComment ? (
@@ -656,7 +693,7 @@ export const CommentReplies = () => {
       <ReplyDialog
         open={showReplyDialog}
         onOpenChange={setShowReplyDialog}
-        comment={currentComment}
+        comment={selectedComment}
         onSubmit={handleSubmitReply}
       />
     </div>

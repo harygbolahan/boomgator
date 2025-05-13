@@ -49,7 +49,7 @@ export const ContentSchedulerPage = () => {
       
       setPosts(data || []);
     } catch (error) {
-      toast.error("Failed to load scheduled posts");
+      toast.error(`Failed to load scheduled posts: ${error.message}`);
       console.error("Error fetching posts:", error);
     } finally {
       setLoading(false);
@@ -69,7 +69,8 @@ export const ContentSchedulerPage = () => {
       });
       setPlatforms(response.data || []);
     } catch (error) {
-      toast.error("Failed to load platforms");
+      const errorMessage = error?.response?.data?.message || error.message;
+      toast.error(`Failed to load platforms: ${errorMessage}`);
       console.error("Error fetching platforms:", error);
     } finally {
       setPlatformsLoading(false);
@@ -83,7 +84,7 @@ export const ContentSchedulerPage = () => {
       await fetchScheduledPosts();
       toast.success("Posts refreshed successfully");
     } catch (error) {
-      toast.error("Failed to refresh posts");
+      toast.error(`Failed to refresh posts: ${error.message}`);
     } finally {
       setTimeout(() => setRefreshing(false), 600);
     }
@@ -96,7 +97,7 @@ export const ContentSchedulerPage = () => {
       setSelectedPost(post);
       setIsViewDialogOpen(true);
     } catch (error) {
-      toast.error("Failed to load post details");
+      toast.error(`Failed to load post details: ${error.message}`);
       console.error("Error fetching post:", error);
     }
   };

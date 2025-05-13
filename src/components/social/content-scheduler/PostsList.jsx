@@ -59,6 +59,7 @@ const PostsList = ({
               <SelectItem value="Scheduled">Scheduled</SelectItem>
               <SelectItem value="Posted">Posted</SelectItem>
               <SelectItem value="Cancelled">Cancelled</SelectItem>
+              <SelectItem value="Failed">Failed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -72,7 +73,7 @@ const PostsList = ({
         ) : filteredPosts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="w-12 h-12 text-gray-300 mb-4" />
-            <p className="text-lg text-gray-500">No {selectedTab === "All" ? "" : selectedTab} posts found.</p>
+            <p className="text-lg text-gray-500">No {selectedTab === "All" ? "" : selectedTab.toLowerCase()} posts found.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -90,7 +91,7 @@ const PostsList = ({
       {filteredPosts.length > 0 && (
         <CardFooter className="bg-gray-50 dark:bg-gray-800 flex items-center justify-between">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Showing {filteredPosts.length} {selectedTab === "All" ? "total" : selectedTab} posts
+            Showing {filteredPosts.length} {selectedTab === "All" ? "total" : selectedTab.toLowerCase()} posts
           </div>
           <Button 
             variant="ghost" 

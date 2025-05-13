@@ -27,8 +27,8 @@ import { PricingPage } from "@/pages/PricingPage"
 import { NotificationsPage } from "@/pages/NotificationsPage"
 import { ContentSchedulerPage } from "@/pages/ContentSchedulerPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
-import Enhancements from "@/pages/Enhancements"
-import CommentAutomationPage from "@/pages/CommentAutomationPage"
+import CommentManagementPage from "@/pages/CommentManagementPage"
+import CommentAutomationsPage from "@/pages/CommentAutomationsPage"
 import LiveChatPage from "@/pages/LiveChatPage"
 import AdCommentsPage from "@/pages/AdCommentsPage"
 import CaptionGeneratorPage from "@/pages/CaptionGeneratorPage"
@@ -107,10 +107,11 @@ function App() {
                     <Route path="/account" element={<AccountPage />} />
                     <Route path="/support" element={<SupportPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
-                    <Route path="/enhancements" element={<Enhancements />} />
                     
                     {/* New Enhancement Pages */}
-                    <Route path="/comment-automation" element={<CommentAutomationPage />} />
+                    <Route path="/comment-management" element={<CommentManagementPage />} />
+                    <Route path="/comment-automations" element={<CommentAutomationsPage />} />
+                    <Route path="/comment-automation" element={<Navigate to="/comment-management" replace />} />
                     <Route path="/live-chat" element={<LiveChatPage />} />
                     <Route path="/ad-comments" element={<AdCommentsPage />} />
                     <Route path="/caption-generator" element={<CaptionGeneratorPage />} />

@@ -30,9 +30,10 @@ import {
   BookOpen,
   Sparkles,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  MessageCircle,
+  Type
 } from "lucide-react";
-import { PageNavigation } from "../PageNavigation";
 import { UserMenu } from "./UserMenu";
 import SubscriptionStatus from "../ui/SubscriptionStatus";
 
@@ -41,22 +42,26 @@ const navItems = [
   { 
     category: "Main",
     items: [
-      { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-      { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-5 h-5" /> },
+      { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-3 h-3" /> },
+      { name: "Integrations", path: "/integrations", icon: <Link2 className="w-3 h-3" /> },
+
     ]
   },
   {
     category: "Tools",
     items: [
-      { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" /> },
-      { name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" /> },
-      { name: "Enhancements", path: "/enhancements", icon: <Sparkles className="w-5 h-5" /> },
+      { name: "Automation", path: "/automation", icon: <Zap className="w-3 h-3" /> },
+      { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-3 h-3" /> },
+      { name: "Comment Management", path: "/comment-management", icon: <MessageSquare className="w-3 h-3" /> },
+      { name: "Live Chat", path: "/live-chat", icon: <MessageCircle className="w-3 h-3" /> },
+      // { name: "Ad Comments", path: "/ad-comments", icon: <MessageSquare className="w-5 h-5" /> },
+      // { name: "Caption Generator", path: "/caption-generator", icon: <Type className="w-5 h-5" /> },
     ]
   },
   {
     category: "Account",
     items: [
-      { name: "Logout", path: "/logout", icon: <LogOut className="w-5 h-5" /> }
+      { name: "Logout", path: "/logout", icon: <LogOut className="w-3 h-3" /> }
     ]
   }
 ];
@@ -171,7 +176,7 @@ const NavItem = memo(({ item, isActive, onClick, isCollapsed, isDarkMode }) => {
         <span className={`${isCollapsed ? 'mx-auto' : ''}`}>
           {item.icon}
         </span>
-        {!isCollapsed && <span>{item.name}</span>}
+        {!isCollapsed && <span className="text-base">{item.name}</span>}
       </button>
       
       {/* Tooltip for collapsed mode */}
@@ -353,7 +358,7 @@ function Layout() {
               <nav className="px-4 space-y-6">
                 {navItems.map((section, index) => (
                   <div key={`section-${index}`} className="space-y-2">
-                    <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 px-4">
+                    <h3 className="text-sm uppercase font-semibold text-gray-500 dark:text-gray-400 px-4">
                       {section.category}
                     </h3>
                     {section.items.map((item) => (
@@ -367,7 +372,7 @@ function Layout() {
                         } ${item.path === '/logout' ? (isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700') : ''}`}
                       >
                         {item.icon}
-                        <span>{item.name}</span>
+                        <span className="text-sm">{item.name}</span>
                       </button>
                     ))}
                   </div>
@@ -375,7 +380,7 @@ function Layout() {
               </nav>
             </div>
 
-            <div className={`p-4 ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50/50'} border-t`}>
+            {/* <div className={`p-4 ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50/50'} border-t`}>
               <button
                 onClick={toggleDarkMode}
                 className={`w-full px-4 py-3 rounded-lg flex items-center gap-3 ${
@@ -388,7 +393,7 @@ function Layout() {
                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
               </button>
-            </div>
+            </div> */}
           </div>
         </aside>
         
@@ -427,7 +432,7 @@ function Layout() {
                 {navItems.map((section, index) => (
                   <div key={`section-${index}`} className="space-y-2">
                     {!isSidebarCollapsed && (
-                      <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 px-4 mb-2">
+                      <h3 className="text-sm uppercase font-semibold text-gray-500 dark:text-gray-400 px-4 mb-2">
                         {section.category}
                       </h3>
                     )}
@@ -449,7 +454,7 @@ function Layout() {
               </nav>
             </div>
 
-            <div className={`p-4 ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50/50'} border-t transition-colors`}>
+            {/* <div className={`p-4 ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50/50'} border-t transition-colors`}>
               <button
                 onClick={toggleDarkMode}
                 className={`w-full ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-lg flex items-center ${
@@ -462,9 +467,9 @@ function Layout() {
                 <span className={`${isSidebarCollapsed ? 'mx-auto' : ''}`}>
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </span>
-                {!isSidebarCollapsed && <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+                {!isSidebarCollapsed && <span className="text-xs">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>}
               </button>
-            </div>
+            </div> */}
           </div>
         </aside>
         
@@ -588,9 +593,6 @@ function Layout() {
               onClick={() => setNotificationsOpen(false)}
             />
           )}
-          
-          {/* Page navigation for development - keep at bottom */}
-          <PageNavigation />
         </div>
       </div>
     </div>

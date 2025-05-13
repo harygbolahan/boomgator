@@ -159,6 +159,9 @@ const SchedulePostForm = ({ onPostCreated, openPreviewModal, platforms = [], pla
         // Format error messages from API response
         const errors = error.response.data.errors;
         errorMessage = Object.values(errors).join('\n');
+      } else if (error.response?.data?.message) {
+        // Extract error message from standard API error format
+        errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }

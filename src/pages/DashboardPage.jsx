@@ -328,55 +328,95 @@ export function DashboardPage() {
       }
       
       // Transform scheduled posts - handle empty data case
-      if (homeData.schedule_post?.data && Array.isArray(homeData.schedule_post.data)) {
-        const filteredPosts = homeData.schedule_post.data
+      if (homeData.data.schedule_post?.data && Array.isArray(homeData.data.schedule_post.data)) {
+        console.log('Schedule post data found in homeData.data.schedule_post:', homeData.data.schedule_post.data);
+        const filteredPosts = homeData.data.schedule_post.data
           .filter(post => post.status === "Scheduled")
           .slice(0, 5); // Limit to 5 posts
+        
+        console.log('Filtered scheduled posts:', filteredPosts);
           
         if (filteredPosts.length > 0) {
-          setScheduledPosts(filteredPosts.map(post => {
-            // Map platform to icon
-            const getPlatformIcon = (platformId) => {
-              // Default to Facebook if we don't have specific mapping info
-              return <Facebook size={20} className="text-white" />;
-            };
-            
-            // Map platform to background color
-            const getPlatformBg = () => {
-              return "bg-gradient-to-r from-indigo-500 to-blue-500";
-            };
-            
-            // Format date for display
-            const formatScheduleDate = (dateStr) => {
-              const scheduleDate = new Date(dateStr);
-              const now = new Date();
-              const tomorrow = new Date();
-              tomorrow.setDate(tomorrow.getDate() + 1);
+          try {
+            const mappedPosts = filteredPosts.map(post => {
+              // Map platform to icon
+              const getPlatformIcon = (platformId) => {
+                // Default to Facebook if we don't have specific mapping info
+                return <Facebook size={20} className="text-white" />;
+              };
               
-              if (scheduleDate.toDateString() === now.toDateString()) {
-                return `Today, ${scheduleDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-              } else if (scheduleDate.toDateString() === tomorrow.toDateString()) {
-                return `Tomorrow, ${scheduleDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-              } else {
-                return `${scheduleDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${scheduleDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-              }
-            };
-            
-            return {
+              // Map platform to background color
+              const getPlatformBg = () => {
+                return "bg-gradient-to-r from-indigo-500 to-blue-500";
+              };
+              
+              // Format date for display
+              const formatScheduleDate = (dateStr) => {
+                const scheduleDate = new Date(dateStr);
+                const now = new Date();
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                if (scheduleDate.toDateString() === now.toDateString()) {
+                  return `Today, ${scheduleDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                } else if (scheduleDate.toDateString() === tomorrow.toDateString()) {
+                  return `Tomorrow, ${scheduleDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                } else {
+                  return `${scheduleDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${scheduleDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                }
+              };
+              
+              return {
+                id: post.id,
+                title: post.content?.slice(0, 30) + (post.content?.length > 30 ? '...' : '') || "Scheduled post",
+                time: formatScheduleDate(post.scheduled_time || new Date()),
+                platformIcon: getPlatformIcon(post.platform_id),
+                platformBg: getPlatformBg(),
+                content: post.content || "",
+                image_path: post.image_path || "",
+                video_path: post.video_path || ""
+              };
+            });
+            console.log('Mapped scheduled posts:', mappedPosts);
+            setScheduledPosts(mappedPosts);
+          } catch (error) {
+            console.error('Error mapping scheduled posts:', error);
+            setScheduledPosts([]);
+          }
+        } else {
+          setScheduledPosts([]);
+        }
+      } else if (homeData.schedule_post?.data && Array.isArray(homeData.schedule_post.data)) {
+        // Try alternative path
+        console.log('Schedule post data found in homeData.schedule_post:', homeData.schedule_post.data);
+        const filteredPosts = homeData.schedule_post.data
+          .filter(post => post.status === "Scheduled")
+          .slice(0, 5);
+          
+        if (filteredPosts.length > 0) {
+          try {
+            setScheduledPosts(filteredPosts.map(post => ({
               id: post.id,
               title: post.content?.slice(0, 30) + (post.content?.length > 30 ? '...' : '') || "Scheduled post",
-              time: formatScheduleDate(post.scheduled_time || new Date()),
-              platformIcon: getPlatformIcon(post.platform_id),
-              platformBg: getPlatformBg(),
+              time: new Date(post.scheduled_time || new Date()).toLocaleString(),
+              platformIcon: <Facebook size={20} className="text-white" />,
+              platformBg: "bg-gradient-to-r from-indigo-500 to-blue-500",
               content: post.content || "",
               image_path: post.image_path || "",
               video_path: post.video_path || ""
-            };
-          }));
+            })));
+          } catch (error) {
+            console.error('Error mapping alternate scheduled posts:', error);
+            setScheduledPosts([]);
+          }
         } else {
           setScheduledPosts([]);
         }
       } else {
+        console.log('No scheduled post data found. Paths checked:');
+        console.log('homeData.data.schedule_post:', homeData.data.schedule_post);
+        console.log('homeData.schedule_post:', homeData.schedule_post);
+        console.log('Full homeData:', homeData);
         setScheduledPosts([]);
       }
       
@@ -440,6 +480,11 @@ export function DashboardPage() {
       }
     }
   }, [homeData]);
+  
+  // Add effect to log state changes for scheduledPosts
+  useEffect(() => {
+    console.log('scheduledPosts state updated:', scheduledPosts);
+  }, [scheduledPosts]);
   
   // Handle refreshing dashboard data
   const handleRefreshData = () => {
@@ -592,7 +637,7 @@ export function DashboardPage() {
   const subscriptionBadge = getSubscriptionBadge();
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-[350px] sm:max-w-none">
+    <div className="container mx-auto py-6 px-2 max-w-[350px] sm:max-w-none">
       {/* Dashboard Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
@@ -670,10 +715,7 @@ export function DashboardPage() {
                     } px-2.5 py-0.5`}>
                       {packageTier || "Trial"}
                     </Badge>
-                    <div className="h-1 w-1 rounded-full bg-slate-300"></div>
-                    <span className="text-sm text-muted-foreground">
-                      {(subscription || "").toLowerCase().includes("trial") ? "Trial Subscription" : `${subscription ? subscription.charAt(0).toUpperCase() + subscription.slice(1) : "Trial"} Subscription`}
-                    </span>
+                    
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground flex items-center">
                     <span className="font-medium text-slate-900">₦{Number(walletBalance || 0).toLocaleString()}</span>
@@ -712,48 +754,7 @@ export function DashboardPage() {
                 </div>
               )}
               
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-                <div className="flex items-center p-3 rounded-md border border-gray-100 bg-gray-50">
-                  <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                  <span className="text-sm">Content Scheduling</span>
-                </div>
-                <div className="flex items-center p-3 rounded-md border border-gray-100 bg-gray-50">
-                  <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                  <span className="text-sm">Basic Analytics</span>
-                </div>
-                <div className="flex items-center p-3 rounded-md border border-gray-100 bg-gray-50">
-                  {(packageTier || "").toLowerCase().includes("trial") ? (
-                    <XCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                  )}
-                  <span className={(packageTier || "").toLowerCase().includes("trial") ? "text-sm text-gray-500" : "text-sm"}>Advanced Automation</span>
-                </div>
-                <div className="flex items-center p-3 rounded-md border border-gray-100 bg-gray-50">
-                  {(packageTier || "").toLowerCase().includes("trial") ? (
-                    <XCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                  )}
-                  <span className={(packageTier || "").toLowerCase().includes("trial") ? "text-sm text-gray-500" : "text-sm"}>Priority Support</span>
-                </div>
-                <div className="flex items-center p-3 rounded-md border border-gray-100 bg-gray-50">
-                  {(packageTier || "").toLowerCase().includes("pro") ? (
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  )}
-                  <span className={(packageTier || "").toLowerCase().includes("pro") ? "text-sm" : "text-sm text-gray-500"}>Advanced Reports</span>
-                </div>
-                <div className="flex items-center p-3 rounded-md border border-gray-100 bg-gray-50">
-                  {(packageTier || "").toLowerCase().includes("pro") ? (
-                    <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  )}
-                  <span className={(packageTier || "").toLowerCase().includes("pro") ? "text-sm" : "text-sm text-gray-500"}>White Label Reports</span>
-                </div>
-              </div>
+             
             </div>
           </CardContent>
         </Card>
@@ -875,7 +876,7 @@ export function DashboardPage() {
                         </div>
                         
                         <Button size="sm" variant="ghost" onClick={() => openEditAutomation(automation)}>
-                          <Settings className="h-4 w-4" />
+                          {/* <Settings className="h-4 w-4" /> */}
                         </Button>
                       </div>
                     </div>
@@ -912,14 +913,14 @@ export function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Upcoming Scheduled Posts</CardTitle>
             <CardDescription>
-              {homeData?.schedule_post?.scheduled || scheduledPosts.length > 0 ? 
-                `${homeData?.schedule_post?.scheduled || scheduledPosts.length} upcoming post${(homeData?.schedule_post?.scheduled || scheduledPosts.length) !== 1 ? 's' : ''}` : 
+              {homeData?.data?.schedule_post?.scheduled || scheduledPosts.length > 0 ? 
+                `${homeData?.data?.schedule_post?.scheduled || scheduledPosts.length} upcoming post${(homeData?.data?.schedule_post?.scheduled || scheduledPosts.length) !== 1 ? 's' : ''}` : 
                 'No upcoming posts'
               }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {scheduledPosts.length > 0 ? (
+            {scheduledPosts && scheduledPosts.length > 0 ? (
               <div className="space-y-4">
                 {scheduledPosts.map((post) => (
                   <div key={post.id} className="flex border rounded-lg overflow-hidden">

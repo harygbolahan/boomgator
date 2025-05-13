@@ -4,6 +4,34 @@ import { integrationService } from "@/lib/api";
 
 const IntegrationsContext = createContext({});
 
+// Helper function to extract the most specific error message from an API error
+const extractErrorMessage = (error) => {
+  if (!error) return 'An unknown error occurred';
+  
+  // Check for response data message (most specific)
+  if (error.response?.data?.message) {
+    return error.response.data.message;
+  }
+  
+  // Check for response data error
+  if (error.response?.data?.error) {
+    return error.response.data.error;
+  }
+  
+  // If error is already a string, return it
+  if (typeof error === 'string') {
+    return error;
+  }
+  
+  // Check for standard error message
+  if (error.message) {
+    return error.message;
+  }
+  
+  // Fallback for unknown error format
+  return 'Something went wrong. Please try again.';
+};
+
 export function IntegrationsProvider({ children }) {
   const [connectedAccounts, setConnectedAccounts] = useState([]);
   const [platformPages, setPlatformPages] = useState([]);
@@ -25,11 +53,12 @@ export function IntegrationsProvider({ children }) {
       setRetryCount(0); // Reset retry count on success
     } catch (error) {
       console.error("Error fetching platforms:", error);
-      setError("Failed to load connected platforms");
+      const errorMessage = extractErrorMessage(error);
+      setError(errorMessage);
       
       // Only show toast on first attempt
       if (retryCount === 0) {
-        toast.error("Failed to load connected platforms");
+        toast.error(`Failed to load connected platforms: ${errorMessage}`);
       }
       
       // Increment retry count
@@ -46,7 +75,8 @@ export function IntegrationsProvider({ children }) {
       return platform;
     } catch (error) {
       console.error(`Error fetching platform with ID ${id}:`, error);
-      toast.error("Failed to load platform details");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(`Failed to load platform details: ${errorMessage}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -61,7 +91,8 @@ export function IntegrationsProvider({ children }) {
       return pages;
     } catch (error) {
       console.error("Error fetching platform pages:", error);
-      toast.error("Failed to load platform pages");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(`Failed to load platform pages: ${errorMessage}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -76,7 +107,8 @@ export function IntegrationsProvider({ children }) {
       return posts;
     } catch (error) {
       console.error("Error fetching all page posts:", error);
-      toast.error("Failed to load page posts");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(`Failed to load page posts: ${errorMessage}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -90,7 +122,8 @@ export function IntegrationsProvider({ children }) {
       return posts;
     } catch (error) {
       console.error(`Error fetching posts for page ID ${pageId}:`, error);
-      toast.error("Failed to load page posts");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(`Failed to load page posts: ${errorMessage}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -105,7 +138,8 @@ export function IntegrationsProvider({ children }) {
       return result;
     } catch (error) {
       console.error(`Error syncing posts for page ID ${pageId}:`, error);
-      toast.error("Failed to sync page posts");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(`Failed to sync page posts: ${errorMessage}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -133,7 +167,8 @@ export function IntegrationsProvider({ children }) {
       toast.success("Platform disconnected successfully");
     } catch (error) {
       console.error("Error disconnecting platform:", error);
-      toast.error("Failed to disconnect platform");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(`Failed to disconnect platform: ${errorMessage}`);
       throw error;
     } finally {
       setIsLoading(false);
