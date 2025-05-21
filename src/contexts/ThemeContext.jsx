@@ -8,7 +8,7 @@ export function ThemeProvider({ children }) {
     const savedTheme = localStorage.getItem('theme');
     // Check system preference if no saved preference
     if (!savedTheme) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return savedTheme === 'light';
     }
     return savedTheme === 'dark';
   });
@@ -42,3 +42,5 @@ export const useTheme = () => {
   }
   return context;
 }; 
+
+export default ThemeContext; 

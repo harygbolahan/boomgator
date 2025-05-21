@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { commentRepliesService } from "@/lib/api";
+import { useBoom } from "@/contexts/BoomContext";
 
 // The replyTypes with their corresponding colors
 const replyTypes = [
@@ -246,7 +246,7 @@ const CommentDetailsView = ({ comment, onBack, onReply }) => {
     const fetchRelatedComments = async () => {
       try {
         setLoading(true);
-        const data = await commentRepliesService.getCommentRepliesByCommentId(comment.comment_id);
+        const data = await getCommentRepliesByCommentId(comment.comment_id);
         
         // Filter out the current comment
         const filteredComments = data.filter(c => c.id !== comment.id);
@@ -336,6 +336,7 @@ const CommentDetailsView = ({ comment, onBack, onReply }) => {
 
 // Main CommentReplies component
 export const CommentReplies = () => {
+  const { getAllCommentReplies, getCommentRepliesByCommentId, addCommentReply } = useBoom();
   const [activeTab, setActiveTab] = useState("all");
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -349,6 +350,9 @@ export const CommentReplies = () => {
   const [currentComment, setCurrentComment] = useState(null);
   const [selectedComment, setSelectedComment] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [relatedComments, setRelatedComments] = useState([]);
+  const [relatedCommentsLoading, setRelatedCommentsLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Fetch comments on component mount
   useEffect(() => {
@@ -357,13 +361,15 @@ export const CommentReplies = () => {
   
   // Fetch all comments
   const fetchComments = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      const data = await commentRepliesService.getAllCommentReplies();
+      const data = await getAllCommentReplies();
       setComments(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-      toast.error("Failed to load comments");
+    } catch (err) {
+      setError('Failed to fetch comments. Please try again later.');
+      toast.error('Error loading comments');
     } finally {
       setLoading(false);
     }
@@ -378,14 +384,10 @@ export const CommentReplies = () => {
   // Handle submit reply
   const handleSubmitReply = async (replyData) => {
     try {
-      const response = await commentRepliesService.addCommentReply(replyData);
-      
-      // Update the comments list with the new reply
-      setComments(prevComments => [response.data, ...prevComments]);
-      
-      return response;
+      await addCommentReply(replyData);
+      await fetchComments();
+      return true;
     } catch (error) {
-      console.error("Error adding reply:", error);
       throw error;
     }
   };
@@ -493,6 +495,21 @@ export const CommentReplies = () => {
       </Select>
     </div>
   );
+  
+  const fetchRelatedComments = async () => {
+    if (!selectedComment) return;
+    
+    setRelatedCommentsLoading(true);
+    
+    try {
+      const data = await getCommentRepliesByCommentId(selectedComment.comment_id);
+      setRelatedComments(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast.error('Error loading related comments');
+    } finally {
+      setRelatedCommentsLoading(false);
+    }
+  };
   
   return (
     <div className="space-y-4 sm:space-y-6">

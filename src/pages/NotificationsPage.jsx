@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useTheme } from "@/lib/ThemeContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Bell, CheckCheck, AlertCircle, MessageSquare, Calendar, Check, Filter, Search, Trash2, CheckSquare } from "lucide-react";
 
 // Sample notifications data

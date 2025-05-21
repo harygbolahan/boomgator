@@ -1,23 +1,21 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { initFacebookSdk } from "@/lib/socialMediaAuth";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, Filter, X, LayoutDashboard, MessageCircle, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Search, Filter, X, LayoutDashboard, MessageCircle, RefreshCcw, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "react-toastify";
 
 // Import our custom components
 import { AutomationCard } from "@/components/automation/AutomationCard";
-import { AutomationTypeCard } from "@/components/automation/AutomationTypeCard";
 import { FilterDrawer } from "@/components/automation/FilterDrawer";
-import { AutomationDialog } from "@/components/automation/AutomationDialog";
 import { CommentReplies } from '@/components/comments/CommentReplies';
 
-// Import API services
-import { automationService } from "@/lib/api";
+// Import Boom context
+import { useBoom } from "@/contexts/BoomContext";
 
 // Define platform mapping consistently
 const PLATFORMS = {
@@ -28,34 +26,24 @@ const PLATFORMS = {
 };
 
 // EmptyState component
-const EmptyState = ({ searchQuery, onCreateClick }) => (
+const EmptyState = ({ searchQuery }) => (
   <motion.div 
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     className="flex flex-col items-center justify-center p-6 sm:p-12 border border-dashed rounded-xl text-center"
   >
     <div className="rounded-full bg-primary/10 w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center mb-4">
-      {searchQuery ? (
-        <Search className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-      ) : (
-        <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-      )}
+      <Search className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
     </div>
     <h3 className="font-medium text-base sm:text-lg mb-2">
-      {searchQuery ? "No automations found" : "Create your first automation"}
+      {searchQuery ? "No automations found" : "No automations available"}
     </h3>
     <p className="text-muted-foreground mb-6 max-w-md text-sm sm:text-base">
       {searchQuery 
         ? "Try adjusting your search query or filters to find what you're looking for."
-        : "Start building powerful automations to engage with your audience and save time managing your social presence."
+        : "There are currently no automations in your account."
       }
     </p>
-    {!searchQuery && (
-      <Button onClick={onCreateClick}>
-        <Plus className="mr-1.5 h-4 w-4" />
-        Create Automation
-      </Button>
-    )}
   </motion.div>
 );
 
@@ -108,6 +96,8 @@ const ActiveFilters = ({ filters, setFilters }) => {
 
 // Main Page Component
 export function AutomationPage() {
+  const navigate = useNavigate();
+  
   // State
   const [activeTab, setActiveTab] = useState("automations");
   const [automationsList, setAutomationsList] = useState([]);
@@ -120,9 +110,9 @@ export function AutomationPage() {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
-  const [showAutomationDialog, setShowAutomationDialog] = useState(false);
-  const [currentAutomation, setCurrentAutomation] = useState(null);
-  const [selectedType, setSelectedType] = useState(null);
+  
+  // Get automation functions from BoomContext
+  const { getAllAutomations, updateAutomation, deleteAutomation } = useBoom();
   
   // Fetch automations on component mount
   useEffect(() => {
@@ -133,7 +123,7 @@ export function AutomationPage() {
   const fetchAutomations = async () => {
     try {
       setLoading(true);
-      const data = await automationService.getAllAutomations();
+      const data = await getAllAutomations();
       setAutomationsList(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
@@ -145,18 +135,13 @@ export function AutomationPage() {
     }
   };
   
-  // Initialize Facebook SDK
-  useEffect(() => {
-    initFacebookSdk().catch(error => console.error("Failed to initialize Facebook SDK:", error));
-  }, []);
-  
   // Filter and search automations
   const filteredAutomations = automationsList.filter(automation => {
     // Search query filter
     const matchesSearch = !searchQuery || 
       automation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      automation.incoming.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      automation.content.toLowerCase().includes(searchQuery.toLowerCase());
+      automation.incoming?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      automation.content?.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Other filters
     const matchesPlatform = filters.platform === "all" || 
@@ -169,89 +154,10 @@ export function AutomationPage() {
     return matchesSearch && matchesPlatform && matchesType && matchesStatus;
   });
   
-  // Improved automation creation process
-  const handleOpenAutomationDialog = (type = null) => {
-    if (type) {
-      setSelectedType(type);
-      setCurrentAutomation({
-        name: `New ${type} Automation`,
-        type: type,
-        platform: "398280132", // Default to Facebook
-        incoming: type === "Comment" ? "New comment on post" : 
-                  type === "Message" ? "Direct message received" : 
-                  type === "Keyword" ? "Message contains keywords" : 
-                  "Story mention",
-        content: `Thank you for your ${type.toLowerCase()}! We'll get back to you shortly.`,
-        status: "Active",
-        triggers: 0,
-        actions: 0,
-        isNew: true
-      });
-    } else {
-      setSelectedType(null);
-      setCurrentAutomation({
-        name: "New Automation",
-        type: "Comment",
-        platform: "398280132", // Default to Facebook
-        incoming: "New comment on post",
-        content: "Thank you for your comment! We'll get back to you shortly.",
-        status: "Active",
-        triggers: 0,
-        actions: 0,
-        isNew: true
-      });
-    }
-    
-    setShowAutomationDialog(true);
-  };
-  
-  // Open the automation dialog for editing an existing automation
-  const handleEditAutomation = (automation) => {
-    setCurrentAutomation({
-      ...automation,
-      isNew: false
-    });
-    setShowAutomationDialog(true);
-  };
-  
-  // View automation details (could expand to a new page or modal)
+  // View automation details
   const handleViewAutomation = (automation) => {
     toast.info(`Viewing details for "${automation.name}"`);
     // Implementation for viewing details would go here
-  };
-  
-  // Save a new or edited automation
-  const handleSaveAutomation = async (automation) => {
-    try {
-      if (automation.isNew) {
-        // Create new automation
-        const { isNew, ...autoData } = automation;
-        const response = await automationService.createAutomation(autoData);
-        
-        // Update the automations list with the new item
-        setAutomationsList([response, ...automationsList]);
-        
-        toast.success(`"${response.name}" has been created successfully.`);
-      } else {
-        // Update existing automation
-        const { isNew, ...autoData } = automation;
-        const response = await automationService.updateAutomation(autoData);
-        
-        // Update the automations list
-        const updatedList = automationsList.map(item => 
-          item.id === response.id ? response : item
-        );
-        
-        setAutomationsList(updatedList);
-        
-        toast.success(`"${response.name}" has been updated successfully.`);
-      }
-    } catch (err) {
-      console.error("Error saving automation:", err);
-      toast.error(`Failed to ${automation.isNew ? 'create' : 'update'} automation: ${err.message}`);
-    }
-    
-    setShowAutomationDialog(false);
   };
   
   // Change the status of an automation
@@ -260,7 +166,7 @@ export function AutomationPage() {
       const automation = automationsList.find(item => item.id === id);
       if (!automation) return;
       
-      const response = await automationService.updateAutomation({
+      const response = await updateAutomation({
         ...automation,
         status: newStatus
       });
@@ -281,62 +187,34 @@ export function AutomationPage() {
   
   // Delete an automation
   const handleDeleteAutomation = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this automation?")) {
+      return;
+    }
+    
     try {
-      const automation = automationsList.find(item => item.id === id);
-      if (!automation) return;
-      
-      await automationService.deleteAutomation(id);
-      
-      // Update the automations list
-      const updatedList = automationsList.filter(item => item.id !== id);
-      setAutomationsList(updatedList);
-      
-      toast.success(`"${automation.name}" has been deleted.`);
+      setLoading(true);
+      await deleteAutomation(id);
+      toast.success("Automation deleted successfully");
+      await fetchAutomations();
     } catch (err) {
       console.error("Error deleting automation:", err);
-      toast.error(`Failed to delete automation: ${err.message}`);
+      toast.error("Failed to delete automation");
+    } finally {
+      setLoading(false);
     }
   };
   
-  // Main tabs definition (removed flow-builder and accounts)
+  // Main tabs definition
   const mainTabs = [
     { id: "automations", name: "Automations", icon: <LayoutDashboard className="h-4 w-4 mr-2" /> },
     { id: "comments", name: "Comments", icon: <MessageCircle className="h-4 w-4 mr-2" /> }
-  ];
-  
-  // Automation types data
-  const automationTypes = [
-    {
-      id: "Comment",
-      icon: "💬",
-      title: "Comment Automation",
-      description: "Auto-reply to comments on your posts and ads."
-    },
-    {
-      id: "Message",
-      icon: "📨",
-      title: "Message Automation",
-      description: "Set up responses for direct messages and inquiries."
-    },
-    {
-      id: "Keyword",
-      icon: "🔑",
-      title: "Keyword Triggers",
-      description: "Create automated flows based on specific keywords."
-    },
-    {
-      id: "Story",
-      icon: "📱",
-      title: "Story Automation",
-      description: "Respond to story mentions and interactions."
-    }
   ];
   
   return (
     <>
       <div className="space-y-4 sm:space-y-6 mx-auto max-w-[350px] sm:max-w-none">
         {/* Header with animation - Improved responsive layout */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -345,25 +223,44 @@ export function AutomationPage() {
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Automation Center</h2>
             <p className="text-muted-foreground text-sm sm:text-base">
-              Configure and manage your social media automations across all platforms.
+              View and manage your social media automations.
             </p>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  onClick={() => handleOpenAutomationDialog()}
-                  className="w-full sm:w-auto mt-2 sm:mt-0"
-                >
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Create Automation
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p className="text-sm">Create a new automation flow</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    className="w-full sm:w-auto"
+                    onClick={() => navigate("/create-automation")}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    <span>Create Automation</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p className="text-sm">Create a new automation</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={fetchAutomations}
+                  >
+                    <RefreshCcw className="mr-1.5 h-4 w-4" />
+                    <span>Refresh</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p className="text-sm">Refresh automation list</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </motion.div>
         
         {/* Main tabs navigation - Improved for mobile */}
@@ -400,13 +297,15 @@ export function AutomationPage() {
                     <Button 
                       variant="outline" 
                       size="icon" 
-                      onClick={() => setShowFilterDrawer(true)}
                       className="relative sm:flex-shrink-0 h-10 w-10"
+                      onClick={() => setShowFilterDrawer(true)}
                     >
-                      <Filter className="h-4 w-4" />
-                      {(filters.platform !== "all" || filters.type !== "all" || filters.status !== "all") && (
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
-                      )}
+                      <div className="relative">
+                        <Filter className="h-4 w-4" />
+                        {(filters.platform !== "all" || filters.type !== "all" || filters.status !== "all") && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                        )}
+                      </div>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="left">
@@ -455,7 +354,7 @@ export function AutomationPage() {
                             key={automation.id}
                             automation={automation}
                             onStatusChange={handleStatusChange}
-                            onEdit={handleEditAutomation}
+                            onEdit={null}
                             onDelete={handleDeleteAutomation}
                             onView={handleViewAutomation}
                           />
@@ -464,32 +363,10 @@ export function AutomationPage() {
                     </div>
                   </>
                 ) : (
-                  <EmptyState 
-                    searchQuery={searchQuery} 
-                    onCreateClick={() => handleOpenAutomationDialog()} 
-                  />
+                  <EmptyState searchQuery={searchQuery} />
                 )}
               </div>
             )}
-            
-            {/* Automation types section - Improved for mobile */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mt-8 sm:mt-12 pt-4 sm:pt-6 border-t"
-            >
-              <h3 className="font-medium text-base sm:text-lg mb-4 sm:mb-6">Create New Automation</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                {automationTypes.map((type) => (
-                  <AutomationTypeCard
-                    key={type.id}
-                    type={type}
-                    onCreateClick={handleOpenAutomationDialog}
-                  />
-                ))}
-              </div>
-            </motion.div>
           </TabsContent>
           
           {/* Comments Tab */}
@@ -511,17 +388,6 @@ export function AutomationPage() {
           />
         )}
       </AnimatePresence>
-      
-      {/* Improved Automation dialog with better defaults */}
-      <AutomationDialog
-        open={showAutomationDialog}
-        onOpenChange={setShowAutomationDialog}
-        automation={currentAutomation}
-        setAutomation={setCurrentAutomation}
-        onSave={handleSaveAutomation}
-        selectedType={selectedType}
-        platforms={Object.entries(PLATFORMS).map(([id, name]) => ({ id, name }))}
-      />
     </>
   );
 } 

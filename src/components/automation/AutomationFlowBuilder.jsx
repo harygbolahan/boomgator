@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
@@ -24,7 +24,7 @@ import TriggerNode from './nodes/TriggerNode';
 import ConditionNode from './nodes/ConditionNode';
 import ActionNode from './nodes/ActionNode';
 
-// Node types definition
+// Node types definition - moved outside component
 const nodeTypes = {
   triggerNode: TriggerNode,
   conditionNode: ConditionNode,
@@ -96,8 +96,8 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
         return;
       }
 
-      // Get position from drop point
-      const position = reactFlowInstance.project({
+      // Get position from drop point using the new API
+      const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });

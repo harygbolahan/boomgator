@@ -6,9 +6,11 @@ import { Register } from "@/pages/auth/Register"
 import { ForgotPassword } from "@/pages/auth/ForgotPassword"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { AutomationPage } from "@/pages/AutomationPage"
+import { CreateAutomationPage } from "@/pages/CreateAutomationPage"
 import { CalendarPage } from "@/pages/CalendarPage"
 import { AnalyticsPage } from "@/pages/AnalyticsPage"
 import { IntegrationsPage } from "@/pages/IntegrationsPage"
+import { PagePostsPage } from "@/pages/PagePostsPage"
 import { AccountPage } from "@/pages/AccountPage"
 import { SupportPage } from "@/pages/SupportPage"
 import { SocialHubPage } from "@/pages/SocialHubPage"
@@ -23,7 +25,7 @@ import { NotFoundPage } from "@/pages/NotFoundPage"
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"
-import { DashboardProvider } from "@/contexts/DashboardContext"
+import { BoomProvider } from "@/contexts/BoomContext"
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -46,7 +48,7 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <DashboardProvider>
+      <BoomProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<HomePage />} />
@@ -77,9 +79,11 @@ function App() {
             }>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/automation" element={<AutomationPage />} />
+              <Route path="/create-automation" element={<CreateAutomationPage />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/integrations" element={<IntegrationsPage />} />
+              <Route path="/page-posts/:pageId" element={<PagePostsPage />} />
               <Route path="/social-hub" element={<SocialHubPage />} />
               <Route path="/content-scheduler" element={<ContentSchedulerPage />} />
               <Route path="/instagram-viral-finder" element={<InstagramViralFinderPage />} />
@@ -89,6 +93,7 @@ function App() {
               <Route path="/account" element={<AccountPage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/social-platforms" element={<PagePostsPage />} />
             </Route>
             
             {/* 404 Not Found */}
@@ -112,7 +117,7 @@ function App() {
             theme="light"
           />
         </BrowserRouter>
-      </DashboardProvider>
+      </BoomProvider>
     </AuthProvider>
   )
 }

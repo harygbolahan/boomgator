@@ -33,7 +33,10 @@ const PlatformIndicator = ({ platforms }) => {
         <TooltipProvider key={i}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${getPlatformColor(platform)}`} />
+              <button 
+                type="button" 
+                className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${getPlatformColor(platform)}`}
+              />
             </TooltipTrigger>
             <TooltipContent side="bottom">
               <p className="text-xs">{platform}</p>
@@ -152,7 +155,7 @@ export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, o
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
+                    <span><MoreHorizontal className="h-4 w-4" /></span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -203,11 +206,9 @@ export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, o
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center">
-                  <Badge variant="outline" className="h-5">
-                    {automation.triggers} Triggers
-                  </Badge>
-                </div>
+                <Badge variant="outline" className="h-5 flex items-center">
+                  <span>{automation.triggers} Triggers</span>
+                </Badge>
               </TooltipTrigger>
               <TooltipContent side="left">
                 <p className="text-xs">Number of times this automation has been triggered</p>

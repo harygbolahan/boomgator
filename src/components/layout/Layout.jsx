@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { useTheme } from "@/lib/ThemeContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { 
   LayoutDashboard, 
   Share2, 
@@ -29,12 +29,9 @@ import { UserMenu } from "./UserMenu";
 
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-  { name: "Social Hub", path: "/social-hub", icon: <Share2 className="w-5 h-5" /> },
   { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-5 h-5" /> },
   { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" /> },
-  { name: "Schedule", path: "/calendar", icon: <Calendar className="w-5 h-5" /> },
-  { name: "Analytics", path: "/analytics", icon: <BarChart2 className="w-5 h-5" /> },
-  { name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" /> },
+  { name: "Social Platforms", path: "/social-platforms", icon: <Share2 className="w-5 h-5" /> },
   { name: "Account", path: "/account", icon: <UserCircle className="w-5 h-5" /> },
   { name: "Support", path: "/support", icon: <LifeBuoy className="w-5 h-5" /> },
   { name: "Logout", path: "/logout", icon: <LogOut className="w-5 h-5" /> },

@@ -1,179 +1,323 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, RefreshCw, Link2, Calendar, BarChart3, MessageCircle, Users } from "lucide-react";
+import { useBoom } from "@/contexts/BoomContext";
 
 export function IntegrationsPage() {
-  const [connectedAccounts, setConnectedAccounts] = useState(initialConnectedAccounts);
+  const navigate = useNavigate();
+  const { 
+    platforms, 
+    loadingPlatforms, 
+    getPlatforms,
+    pages, 
+    loadingPages,
+    getPages,
+    getPlatformAuthLink,
+    syncPagePosts
+  } = useBoom();
+
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [currentPlatform, setCurrentPlatform] = useState(null);
   const [connectStep, setConnectStep] = useState(1);
-  const [authCode, setAuthCode] = useState("");
-  const [connectSuccess, setConnectSuccess] = useState(false);
   const [connectError, setConnectError] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [platformLink, setPlatformLink] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch platforms and pages on component mount
+  useEffect(() => {
+    getPlatforms();
+    getPages();
+  }, [getPlatforms, getPages]);
 
   const handleConnectClick = (platform) => {
     setCurrentPlatform(platform);
     setConnectStep(1);
-    setAuthCode("");
-    setConnectSuccess(false);
     setConnectError("");
+    setPlatformLink("");
     setShowConnectModal(true);
+  };
+
+  const handleGetPlatformLink = async () => {
+    if (!currentPlatform) return;
+    
+    setIsConnecting(true);
+    setConnectError("");
+    
+    try {
+      const link = await getPlatformAuthLink(currentPlatform.id);
+      
+      if (link) {
+        setPlatformLink(link);
+        setConnectStep(2);
+      } else {
+        setConnectError("Failed to get platform authorization link");
+      }
+    } catch (error) {
+      setConnectError("Error connecting to platform: " + error.message);
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const handleContinue = () => {
     if (connectStep === 1) {
-      // In a real app, this would redirect to the platform's auth page
-      // For demo, we'll just go to the next step
-      setConnectStep(2);
+      // Get the platform auth link
+      handleGetPlatformLink();
     } else if (connectStep === 2) {
-      if (!authCode.trim()) {
-        setConnectError("Please enter the authorization code");
-        return;
+      // Open the platform auth link in a new window
+      if (platformLink) {
+        window.open(platformLink, '_blank', 'width=600,height=700');
+        setConnectStep(3);
       }
-      
-      // Simulate API call to verify code
-      setTimeout(() => {
-        // Demo succeeds with code "12345"
-        if (authCode === "12345") {
-          setConnectSuccess(true);
-          const newAccount = {
-            id: Math.random().toString(36).slice(2, 11),
-            platform: currentPlatform.id,
-            name: `${currentPlatform.name} Account`,
-            username: `user_${Math.floor(Math.random() * 1000)}`,
-            avatar: "/placeholder-avatar.jpg",
-            status: "active",
-            connectedAt: new Date(),
-            lastSync: new Date()
-          };
-          
-          setConnectedAccounts([...connectedAccounts, newAccount]);
-          setConnectStep(3);
-        } else {
-          setConnectError("Invalid authorization code. Try 12345 for the demo.");
-        }
-      }, 1000);
     } else if (connectStep === 3) {
-      // Close the modal after success
+      // After user has authorized, refresh platforms
+      handleRefreshAll();
       setShowConnectModal(false);
     }
   };
 
-  const handleDisconnect = (accountId) => {
-    const updatedAccounts = connectedAccounts.filter(account => account.id !== accountId);
-    setConnectedAccounts(updatedAccounts);
+  const handleRefreshAll = async () => {
+    setRefreshing(true);
+    try {
+      await getPlatforms();
+      await getPages();
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const handleRefreshAccount = (accountId) => {
-    const updatedAccounts = connectedAccounts.map(account => {
-      if (account.id === accountId) {
-        return {
-          ...account,
-          lastSync: new Date()
-        };
-      }
-      return account;
-    });
-    setConnectedAccounts(updatedAccounts);
+  const handleRefreshAccount = async (platformId) => {
+    try {
+      await getPlatforms();
+      await getPages();
+    } catch (error) {
+      console.error("Error refreshing account:", error);
+    }
+  };
+
+  const handleSyncPagePosts = async (pageId) => {
+    try {
+      await syncPagePosts(pageId);
+    } catch (error) {
+      console.error("Error syncing page posts:", error);
+    }
+  };
+
+  const handleViewPagePosts = (pageId) => {
+    navigate(`/page-posts/${pageId}`);
+  };
+
+  // Define available platforms based on what the API supports
+  const availablePlatforms = [
+    {
+      id: "facebook",
+      name: "Facebook",
+      icon: "f",
+      bgColor: "bg-blue-100 text-blue-800",
+      description: "Connect to your Facebook pages to schedule posts and analyze performance."
+    },
+    {
+      id: "instagram",
+      name: "Instagram",
+      icon: "📸",
+      bgColor: "bg-pink-100 text-pink-800",
+      description: "Connect to your Instagram business account to schedule posts and analyze performance."
+    },
+    {
+      id: "twitter",
+      name: "Twitter",
+      icon: "𝕏",
+      bgColor: "bg-gray-100 text-gray-800",
+      description: "Connect to your Twitter account to schedule tweets and analyze engagement."
+    },
+    {
+      id: "linkedin",
+      name: "LinkedIn",
+      icon: "in",
+      bgColor: "bg-blue-100 text-blue-800",
+      description: "Connect to your LinkedIn profile or page to schedule posts and track analytics."
+    }
+  ];
+
+  const timeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    let interval = Math.floor(seconds / 31536000);
+    if (interval > 1) return `${interval} years ago`;
+    if (interval === 1) return `1 year ago`;
+    
+    interval = Math.floor(seconds / 2592000);
+    if (interval > 1) return `${interval} months ago`;
+    if (interval === 1) return `1 month ago`;
+    
+    interval = Math.floor(seconds / 86400);
+    if (interval > 1) return `${interval} days ago`;
+    if (interval === 1) return `1 day ago`;
+    
+    interval = Math.floor(seconds / 3600);
+    if (interval > 1) return `${interval} hours ago`;
+    if (interval === 1) return `1 hour ago`;
+    
+    interval = Math.floor(seconds / 60);
+    if (interval > 1) return `${interval} minutes ago`;
+    if (interval === 1) return `1 minute ago`;
+    
+    return `${Math.floor(seconds)} seconds ago`;
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Integrations</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Social Platforms</h2>
           <p className="text-muted-foreground">
-            Connect your social media accounts and other marketing tools.
+            Connect and manage your social media accounts to schedule posts and analyze performance.
           </p>
         </div>
+        <Button 
+          onClick={handleRefreshAll} 
+          variant="outline" 
+          disabled={refreshing || loadingPlatforms}
+        >
+          {refreshing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh All
+            </>
+          )}
+        </Button>
       </div>
 
       <Tabs defaultValue="accounts">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="accounts">Accounts</TabsTrigger>
-          <TabsTrigger value="tools">Tools</TabsTrigger>
-          <TabsTrigger value="api">API Keys</TabsTrigger>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="accounts">Platforms</TabsTrigger>
+          <TabsTrigger value="pages">Pages</TabsTrigger>
         </TabsList>
         
         <TabsContent value="accounts" className="space-y-4 pt-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold">Connected Accounts</h3>
-            <Button onClick={() => setShowConnectModal(true)}>Connect New Account</Button>
+            <h3 className="text-xl font-semibold">Connected Platforms</h3>
+            <Button onClick={() => setShowConnectModal(true)}>Connect New Platform</Button>
           </div>
           
-          {connectedAccounts.length === 0 ? (
+          {loadingPlatforms ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : platforms.length === 0 ? (
             <Alert className="bg-muted">
-              <AlertTitle>No accounts connected yet</AlertTitle>
+              <AlertTitle>No platforms connected yet</AlertTitle>
               <AlertDescription>
-                Connect your social media accounts to start scheduling posts and analyzing performance.
+                Connect your social media platforms to start scheduling posts and analyzing performance.
               </AlertDescription>
             </Alert>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {connectedAccounts.map((account) => {
-                const platform = platforms.find(p => p.id === account.platform);
-                return (
-                  <Card key={account.id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-8 h-8 rounded flex items-center justify-center ${platform.bgColor}`}>
-                            {platform.icon}
-                          </div>
-                          <CardTitle className="text-lg">{platform.name}</CardTitle>
+              {platforms.map((platform) => (
+                <Card key={platform.id} className="overflow-hidden border-l-4" style={{borderLeftColor: getPlatformBorderColor(platform.platform_name)}}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getPlatformColor(platform.platform_name)}`}>
+                          {getPlatformIcon(platform.platform_name)}
                         </div>
-                        <Badge variant={account.status === "active" ? "default" : "outline"}>
-                          {account.status === "active" ? "Active" : "Error"}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center space-x-3 mb-2">
-                        <img 
-                          src={account.avatar} 
-                          alt={account.name} 
-                          className="w-8 h-8 rounded-full"
-                        />
                         <div>
-                          <div className="font-medium">{account.name}</div>
-                          <div className="text-xs text-muted-foreground">@{account.username}</div>
+                          <CardTitle className="text-lg">{platform.platform_name}</CardTitle>
+                          <p className="text-xs text-muted-foreground">
+                            Last synced: {timeAgo(platform.last_sync_at)}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        Last synced: {new Date(account.lastSync).toLocaleString()}
+                      <Badge variant={platform.status === "active" ? "default" : "outline"}>
+                        {platform.status === "active" ? "Active" : "Error"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="grid grid-cols-2 gap-2 my-2">
+                      <div className="flex items-center space-x-2 p-2 bg-muted rounded-md">
+                        <Users className="h-4 w-4 text-blue-500" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Followers</p>
+                          <p className="font-medium">{formatNumber(platform.followers || 0)}</p>
+                        </div>
                       </div>
-                    </CardContent>
-                    <CardFooter className="flex justify-between pt-0">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleRefreshAccount(account.id)}
-                      >
-                        Refresh
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleDisconnect(account.id)}
-                      >
-                        Disconnect
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                );
-              })}
+                      <div className="flex items-center space-x-2 p-2 bg-muted rounded-md">
+                        <BarChart3 className="h-4 w-4 text-green-500" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Engagement</p>
+                          <p className="font-medium">{formatNumber(platform.total_engagement || 0)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center space-x-2 p-2 bg-muted rounded-md">
+                        <MessageCircle className="h-4 w-4 text-purple-500" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Comments</p>
+                          <p className="font-medium">{formatNumber(platform.comments || 0)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 p-2 bg-muted rounded-md">
+                        <Calendar className="h-4 w-4 text-orange-500" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Activity</p>
+                          <p className="font-medium">{timeAgo(platform.last_activity)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {platform.profile_url && (
+                      <div className="mt-3 text-sm truncate">
+                        <Link2 className="h-3 w-3 inline-block mr-1 text-blue-500" />
+                        <a href={platform.profile_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                          {platform.profile_url}
+                        </a>
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter className="flex justify-between pt-2 bg-muted/20">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleRefreshAccount(platform.id)}
+                    >
+                      Refresh
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      Disconnect
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
             </div>
           )}
           
           <div className="mt-8 space-y-4">
             <h3 className="text-xl font-semibold">Available Platforms</h3>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {platforms.map((platform) => {
-                const isConnected = connectedAccounts.some(a => a.platform === platform.id);
+              {availablePlatforms.map((platform) => {
+                const isConnected = platforms.some(p => p.platform_name.toLowerCase() === platform.name.toLowerCase());
                 return (
                   <Card key={platform.id} className={isConnected ? "border-primary/50" : ""}>
                     <CardHeader className="pb-3">
@@ -207,104 +351,71 @@ export function IntegrationsPage() {
           </div>
         </TabsContent>
         
-        <TabsContent value="tools" className="space-y-4 pt-4">
+        <TabsContent value="pages" className="space-y-4 pt-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold">Marketing Tools</h3>
-            <Button variant="outline">Add New Tool</Button>
+            <h3 className="text-xl font-semibold">Connected Pages</h3>
+            <Button onClick={handleRefreshAll} variant="outline">Refresh Pages</Button>
           </div>
           
-          <Alert className="bg-muted">
-            <AlertTitle>No tools connected yet</AlertTitle>
-            <AlertDescription>
-              Connect your marketing tools to enhance your workflow.
-            </AlertDescription>
-          </Alert>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {marketingTools.map((tool) => (
-              <Card key={tool.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 rounded flex items-center justify-center bg-muted">
-                      {tool.icon}
+          {loadingPages ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : pages.length === 0 ? (
+            <Alert className="bg-muted">
+              <AlertTitle>No pages connected yet</AlertTitle>
+              <AlertDescription>
+                Connect your social media accounts to access your pages.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {pages.map((page) => (
+                <Card key={page.id} className="overflow-hidden border-l-4" style={{borderLeftColor: getPlatformBorderColor(page.platform_name)}}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-8 h-8 rounded flex items-center justify-center ${getPlatformColor(page.platform_name)}`}>
+                          {getPlatformIcon(page.platform_name)}
+                        </div>
+                        <CardTitle className="text-lg">{page.page_name}</CardTitle>
+                      </div>
+                      <Badge>
+                        {page.platform_name}
+                      </Badge>
                     </div>
-                    <CardTitle className="text-md">{tool.name}</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-xs">
-                    {tool.description}
-                  </CardDescription>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                  >
-                    Connect
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="api" className="space-y-4 pt-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold">API Integration</h3>
-            <Button variant="outline">Generate New Key</Button>
-          </div>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Your API Keys</CardTitle>
-              <CardDescription>
-                Use these keys to access our API and integrate with your own systems.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">Production Key</div>
-                    <div className="text-sm text-muted-foreground">Created: August 2, 2023</div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">Show</Button>
-                    <Button variant="outline" size="sm">Revoke</Button>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">Development Key</div>
-                    <div className="text-sm text-muted-foreground">Created: July 15, 2023</div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">Show</Button>
-                    <Button variant="outline" size="sm">Revoke</Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>API Documentation</CardTitle>
-              <CardDescription>
-                Learn how to integrate with our platform through the API.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-2">
-                <a href="#" className="text-blue-600 hover:underline">Getting Started Guide</a>
-                <a href="#" className="text-blue-600 hover:underline">API Reference</a>
-                <a href="#" className="text-blue-600 hover:underline">Code Examples</a>
-              </div>
-            </CardContent>
-          </Card>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm">
+                      <span className="font-medium">Page ID:</span> {page.page_id}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      Connected since: {new Date(page.created_at).toLocaleDateString()}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Last update: {timeAgo(page.updated_at)}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-between pt-0">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleSyncPagePosts(page.page_id)}
+                    >
+                      Sync Posts
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => handleViewPagePosts(page.page_id)}
+                    >
+                      View Posts
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
       
@@ -315,7 +426,7 @@ export function IntegrationsPage() {
             <h2 className="text-xl font-semibold mb-4">
               {currentPlatform 
                 ? `Connect to ${currentPlatform.name}`
-                : "Connect Social Media Account"
+                : "Connect Social Media Platform"
               }
             </h2>
             
@@ -323,7 +434,7 @@ export function IntegrationsPage() {
               <div className="space-y-4">
                 {!currentPlatform ? (
                   <div className="grid gap-3 grid-cols-2">
-                    {platforms.map((platform) => (
+                    {availablePlatforms.map((platform) => (
                       <button
                         key={platform.id}
                         className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent"
@@ -355,11 +466,18 @@ export function IntegrationsPage() {
                         To connect your {currentPlatform.name} account, you'll need to:
                       </p>
                       <ol className="list-decimal list-inside text-sm mt-2 space-y-1">
-                        <li>Authorize access to your account</li>
-                        <li>Copy the authorization code</li>
-                        <li>Paste the code here to complete the connection</li>
+                        <li>Click the button below to start the authorization process</li>
+                        <li>Log in to your {currentPlatform.name} account</li>
+                        <li>Grant permissions to the app</li>
+                        <li>Return to this page after successfully connecting</li>
                       </ol>
                     </div>
+                    
+                    {connectError && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{connectError}</AlertDescription>
+                      </Alert>
+                    )}
                   </div>
                 )}
               </div>
@@ -368,41 +486,41 @@ export function IntegrationsPage() {
             {connectStep === 2 && (
               <div className="space-y-4">
                 <p className="text-sm">
-                  Enter the authorization code you received from {currentPlatform.name}
+                  Click the button below to open {currentPlatform.name} authorization page in a new window.
                 </p>
                 
-                <div>
-                  <label htmlFor="auth-code" className="text-sm font-medium">
-                    Authorization Code
-                  </label>
-                  <input
-                    id="auth-code"
-                    type="text"
-                    className="w-full p-2 mt-1 border rounded-lg"
-                    placeholder="Enter code here"
-                    value={authCode}
-                    onChange={(e) => setAuthCode(e.target.value)}
-                  />
-                  {connectError && (
-                    <p className="text-sm text-red-500 mt-1">{connectError}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    For this demo, use code: 12345
-                  </p>
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm font-medium">What happens next:</p>
+                  <ol className="list-decimal list-inside text-sm mt-2 space-y-1">
+                    <li>Log in to your {currentPlatform.name} account</li>
+                    <li>Grant the requested permissions</li>
+                    <li>You'll be redirected back to our app automatically</li>
+                    <li>Return to this window and click "Complete Connection"</li>
+                  </ol>
                 </div>
+                
+                {connectError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{connectError}</AlertDescription>
+                  </Alert>
+                )}
               </div>
             )}
             
             {connectStep === 3 && (
-              <div className="space-y-4 text-center">
-                <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xl">
-                  ✓
-                </div>
-                <h3 className="text-lg font-medium">Connection Successful!</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your {currentPlatform.name} account has been successfully connected.
-                  You can now schedule posts and view analytics for this account.
+              <div className="space-y-4">
+                <p className="text-sm">
+                  After authorizing in the new window, click the button below to complete the connection.
                 </p>
+                
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm font-medium">Please note:</p>
+                  <ul className="list-disc list-inside text-sm mt-2 space-y-1">
+                    <li>Make sure you've completed the authorization process in the popup window</li>
+                    <li>If the authorization failed, you can try again</li>
+                    <li>After connecting, you'll be able to manage your {currentPlatform.name} content</li>
+                  </ul>
+                </div>
               </div>
             )}
             
@@ -411,18 +529,24 @@ export function IntegrationsPage() {
                 variant="outline"
                 onClick={() => setShowConnectModal(false)}
               >
-                {connectStep === 3 ? "Close" : "Cancel"}
+                Cancel
               </Button>
               
-              {connectStep < 3 && (
-                <Button onClick={handleContinue}>
-                  {connectStep === 1
-                    ? currentPlatform 
-                      ? "Authorize Account" 
-                      : "Continue"
-                    : "Connect Account"}
-                </Button>
-              )}
+              <Button 
+                onClick={handleContinue}
+                disabled={isConnecting || (!currentPlatform && connectStep === 1)}
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : connectStep === 1 
+                  ? "Continue" 
+                  : connectStep === 2 
+                    ? "Open Authorization Page" 
+                    : "Complete Connection"}
+              </Button>
             </div>
           </div>
         </div>
@@ -431,112 +555,49 @@ export function IntegrationsPage() {
   );
 }
 
-// Sample data
-const platforms = [
-  {
-    id: "facebook",
-    name: "Facebook",
-    icon: "f",
-    bgColor: "bg-blue-100 text-blue-800",
-    description: "Connect to your Facebook pages to schedule posts and analyze performance."
-  },
-  {
-    id: "instagram",
-    name: "Instagram",
-    icon: "📸",
-    bgColor: "bg-pink-100 text-pink-800",
-    description: "Connect to your Instagram business account to schedule posts and analyze performance."
-  },
-  {
-    id: "twitter",
-    name: "Twitter",
-    icon: "𝕏",
-    bgColor: "bg-gray-100 text-gray-800",
-    description: "Connect to your Twitter account to schedule tweets and analyze engagement."
-  },
-  {
-    id: "linkedin",
-    name: "LinkedIn",
-    icon: "in",
-    bgColor: "bg-blue-100 text-blue-800",
-    description: "Connect to your LinkedIn profile or page to schedule posts and track analytics."
-  },
-  {
-    id: "pinterest",
-    name: "Pinterest",
-    icon: "P",
-    bgColor: "bg-red-100 text-red-800",
-    description: "Connect to your Pinterest account to schedule pins and analyze performance."
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    icon: "♪",
-    bgColor: "bg-black text-white",
-    description: "Connect to your TikTok account to schedule posts and analyze performance."
-  },
-  {
-    id: "youtube",
-    name: "YouTube",
-    icon: "▶",
-    bgColor: "bg-red-100 text-red-800",
-    description: "Connect to your YouTube channel to schedule uploads and analyze performance."
-  },
-  {
-    id: "threads",
-    name: "Threads",
-    icon: "@",
-    bgColor: "bg-gray-100 text-gray-800",
-    description: "Connect to your Threads account to schedule posts and track engagement."
+// Helper functions
+const formatNumber = (num) => {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
   }
-];
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K';
+  }
+  return num.toString();
+};
 
-const marketingTools = [
-  {
-    id: "mailchimp",
-    name: "Mailchimp",
-    icon: "📧",
-    description: "Email marketing platform for sending campaigns and newsletters."
-  },
-  {
-    id: "hubspot",
-    name: "HubSpot",
-    icon: "H",
-    description: "CRM platform with marketing, sales, and service tools."
-  },
-  {
-    id: "canva",
-    name: "Canva",
-    icon: "🎨",
-    description: "Design tool for creating social media graphics and more."
-  },
-  {
-    id: "google-analytics",
-    name: "Google Analytics",
-    icon: "📈",
-    description: "Web analytics service to track website traffic and performance."
-  }
-];
+const getPlatformColor = (platformName) => {
+  const name = platformName.toLowerCase();
+  if (name.includes('facebook')) return 'bg-blue-100 text-blue-800';
+  if (name.includes('instagram')) return 'bg-pink-100 text-pink-800';
+  if (name.includes('twitter')) return 'bg-gray-100 text-gray-800';
+  if (name.includes('linkedin')) return 'bg-blue-100 text-blue-800';
+  if (name.includes('pinterest')) return 'bg-red-100 text-red-800';
+  if (name.includes('tiktok')) return 'bg-black text-white';
+  if (name.includes('youtube')) return 'bg-red-100 text-red-800';
+  return 'bg-gray-100 text-gray-800';
+};
 
-const initialConnectedAccounts = [
-  {
-    id: "acc1",
-    platform: "facebook",
-    name: "Brand Page",
-    username: "yourbrand",
-    avatar: "/placeholder-avatar.jpg",
-    status: "active",
-    connectedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    lastSync: new Date(Date.now() - 2 * 60 * 60 * 1000)
-  },
-  {
-    id: "acc2",
-    platform: "instagram",
-    name: "Brand Profile",
-    username: "yourbrand",
-    avatar: "/placeholder-avatar.jpg",
-    status: "active",
-    connectedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-    lastSync: new Date(Date.now() - 5 * 60 * 60 * 1000)
-  }
-]; 
+const getPlatformBorderColor = (platformName) => {
+  const name = platformName.toLowerCase();
+  if (name.includes('facebook')) return '#3b5998';
+  if (name.includes('instagram')) return '#e1306c';
+  if (name.includes('twitter')) return '#1da1f2';
+  if (name.includes('linkedin')) return '#0077b5';
+  if (name.includes('pinterest')) return '#bd081c';
+  if (name.includes('tiktok')) return '#000000';
+  if (name.includes('youtube')) return '#ff0000';
+  return '#6b7280';
+};
+
+const getPlatformIcon = (platformName) => {
+  const name = platformName.toLowerCase();
+  if (name.includes('facebook')) return 'f';
+  if (name.includes('instagram')) return '📸';
+  if (name.includes('twitter')) return '𝕏';
+  if (name.includes('linkedin')) return 'in';
+  if (name.includes('pinterest')) return 'P';
+  if (name.includes('tiktok')) return '♪';
+  if (name.includes('youtube')) return '▶';
+  return '@';
+}; 

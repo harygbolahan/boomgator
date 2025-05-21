@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { useTheme } from "@/lib/ThemeContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Home, ArrowLeft, ExternalLink } from "lucide-react";
 
 export function NotFoundPage() {

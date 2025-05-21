@@ -1,232 +1,317 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useReducer } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Check, CreditCard, Loader, RefreshCw, AlertCircle } from "lucide-react";
-import { useDashboard } from "@/contexts/DashboardContext";
-import { accountService } from "@/lib/api";
+import { useBoom } from "@/contexts/BoomContext";
 import { toast } from "react-toastify";
 
-export function AccountPage() {
-  const { accountData, loadingAccount, accountError, fetchAccountData } = useDashboard();
-  
-  const [activeTab, setActiveTab] = useState("profile");
-  const [formData, setFormData] = useState({
+// Account state reducer
+const accountReducer = (state, action) => {
+  switch (action.type) {
+    case 'SET_ACTIVE_TAB':
+      return { ...state, activeTab: action.payload };
+    case 'SET_FORM_DATA':
+      return { ...state, formData: { ...state.formData, ...action.payload } };
+    case 'SET_EMAIL_NOTIFICATIONS':
+      return { ...state, emailNotificationStates: { ...state.emailNotificationStates, ...action.payload } };
+    case 'SET_PUSH_NOTIFICATIONS':
+      return { ...state, pushNotificationStates: { ...state.pushNotificationStates, ...action.payload } };
+    case 'TOGGLE_EMAIL_NOTIFICATION':
+      return {
+        ...state,
+        emailNotificationStates: {
+          ...state.emailNotificationStates,
+          [action.payload]: !state.emailNotificationStates[action.payload]
+        }
+      };
+    case 'TOGGLE_PUSH_NOTIFICATION':
+      return {
+        ...state,
+        pushNotificationStates: {
+          ...state.pushNotificationStates,
+          [action.payload]: !state.pushNotificationStates[action.payload]
+        }
+      };
+    case 'SET_SAVING_PROFILE':
+      return { ...state, savingProfile: action.payload };
+    case 'SET_UPDATING_PASSWORD':
+      return { ...state, updatingPassword: action.payload };
+    case 'SET_PASSWORD_DATA':
+      return { ...state, passwordData: { ...state.passwordData, ...action.payload } };
+    case 'RESET_PASSWORD_DATA':
+      return { 
+        ...state, 
+        passwordData: {
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        } 
+      };
+    case 'SET_PASSWORD_ERROR':
+      return { ...state, passwordError: action.payload };
+    default:
+      return state;
+  }
+};
+
+// Initial state
+const initialState = {
+  activeTab: "profile",
+  formData: {
     first_name: "",
     last_name: "",
     email: "",
     phone: "",
-  });
-  
-  const [emailNotificationStates, setEmailNotificationStates] = useState({
+  },
+  emailNotificationStates: {
     account_activity: false,
     billing_alerts: false,
     post_engagement: false,
     product_updates: false,
     analytics_reports: false,
     campaign_status: false
-  });
-  
-  const [pushNotificationStates, setPushNotificationStates] = useState({
+  },
+  pushNotificationStates: {
     push_notifications: false,
     social_activity: false
-  });
-
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [updatingPassword, setUpdatingPassword] = useState(false);
-  const [passwordData, setPasswordData] = useState({
+  },
+  savingProfile: false,
+  updatingPassword: false,
+  passwordData: {
     currentPassword: "",
     newPassword: "",
     confirmPassword: ""
-  });
-  const [passwordError, setPasswordError] = useState("");
-  
-  // Update form data when account data is loaded
+  },
+  passwordError: ""
+};
+
+// Custom hook for account management
+const useAccountManagement = () => {
+  const { accountData, loadingAccount, accountError, getAccount, updateAccount } = useBoom();
+  const [state, dispatch] = useReducer(accountReducer, initialState);
+
   useEffect(() => {
     if (accountData?.data) {
       console.log('Account data loaded:', accountData);
-      setFormData({
-        first_name: accountData.data.first_name || "",
-        last_name: accountData.data.last_name || "",
-        email: accountData.data.email || "",
-        phone: accountData.data.phone || "",
+      dispatch({ 
+        type: 'SET_FORM_DATA', 
+        payload: {
+          first_name: accountData.data.first_name || "",
+          last_name: accountData.data.last_name || "",
+          email: accountData.data.email || "",
+          phone: accountData.data.phone || "",
+        }
       });
       
       // Update notification states
       if (accountData.notification) {
         console.log('Notification settings loaded:', accountData.notification);
-        setEmailNotificationStates({
-          account_activity: accountData.notification.account_activity === "yes",
-          billing_alerts: accountData.notification.billing_alerts === "yes",
-          post_engagement: accountData.notification.post_engagement === "yes",
-          product_updates: accountData.notification.product_updates === "yes",
-          analytics_reports: accountData.notification.analytics_reports === "yes",
-          campaign_status: accountData.notification.campaign_status === "yes"
+        dispatch({
+          type: 'SET_EMAIL_NOTIFICATIONS',
+          payload: {
+            account_activity: accountData.notification.account_activity === "yes",
+            billing_alerts: accountData.notification.billing_alerts === "yes",
+            post_engagement: accountData.notification.post_engagement === "yes",
+            product_updates: accountData.notification.product_updates === "yes",
+            analytics_reports: accountData.notification.analytics_reports === "yes",
+            campaign_status: accountData.notification.campaign_status === "yes"
+          }
         });
         
-        setPushNotificationStates({
-          push_notifications: accountData.notification.push_notifications === "yes",
-          social_activity: accountData.notification.social_activity === "yes"
+        dispatch({
+          type: 'SET_PUSH_NOTIFICATIONS',
+          payload: {
+            push_notifications: accountData.notification.push_notifications === "yes",
+            social_activity: accountData.notification.social_activity === "yes"
+          }
         });
       }
     }
   }, [accountData]);
-  
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    dispatch({ 
+      type: 'SET_FORM_DATA', 
+      payload: { [name]: value }
+    });
   };
 
   const handlePasswordInputChange = (e) => {
     const { name, value } = e.target;
-    setPasswordData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setPasswordError("");
+    dispatch({ 
+      type: 'SET_PASSWORD_DATA', 
+      payload: { [name]: value }
+    });
+    dispatch({ type: 'SET_PASSWORD_ERROR', payload: "" });
   };
   
   const handleToggleEmailNotification = (key) => {
-    setEmailNotificationStates(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    dispatch({ type: 'TOGGLE_EMAIL_NOTIFICATION', payload: key });
   };
   
   const handleTogglePushNotification = (key) => {
-    setPushNotificationStates(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    dispatch({ type: 'TOGGLE_PUSH_NOTIFICATION', payload: key });
   };
   
   const handleTabKeyDown = (e, tabId) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      setActiveTab(tabId);
+      dispatch({ type: 'SET_ACTIVE_TAB', payload: tabId });
     }
   };
   
   const handleSaveChanges = async () => {
     // Validate required fields
-    if (!formData.first_name || !formData.last_name || !formData.email) {
-      console.log('Validation failed: Missing required fields');
+    if (!state.formData.first_name || !state.formData.last_name || !state.formData.email) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      console.log('Validation failed: Invalid email format');
+    if (!emailRegex.test(state.formData.email)) {
       toast.error("Please enter a valid email address");
       return;
     }
 
-    setSavingProfile(true);
-    console.log('Saving profile with data:', formData);
+    dispatch({ type: 'SET_SAVING_PROFILE', payload: true });
     try {
       // Convert notification states to API format (yes/no)
       const notificationPayload = {
-        ...Object.entries(emailNotificationStates).reduce((acc, [key, value]) => {
+        ...Object.entries(state.emailNotificationStates).reduce((acc, [key, value]) => {
           acc[key] = value ? "yes" : "no";
           return acc;
         }, {}),
-        ...Object.entries(pushNotificationStates).reduce((acc, [key, value]) => {
+        ...Object.entries(state.pushNotificationStates).reduce((acc, [key, value]) => {
           acc[key] = value ? "yes" : "no";
           return acc;
         }, {})
       };
 
-      console.log('Notification payload:', notificationPayload);
-
       // Prepare payload
       const payload = {
-        data: formData,
+        data: state.formData,
         notification: notificationPayload
       };
 
       // Call API to update profile
-      const response = await accountService.updateAccount(payload);
-      console.log('Profile update response:', response);
+      await updateAccount(payload);
       toast.success("Profile updated successfully");
       
       // Refresh account data
-      fetchAccountData();
+      getAccount();
     } catch (error) {
-      console.error('Profile update error:', error);
       toast.error(error.message || "Failed to update profile");
     } finally {
-      setSavingProfile(false);
+      dispatch({ type: 'SET_SAVING_PROFILE', payload: false });
     }
   };
   
   const handlePasswordUpdate = async () => {
     // Reset previous errors
-    setPasswordError("");
+    dispatch({ type: 'SET_PASSWORD_ERROR', payload: "" });
     
     // Validate all fields are filled
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+    if (!state.passwordData.currentPassword || !state.passwordData.newPassword || !state.passwordData.confirmPassword) {
       console.log('Password validation failed: Empty fields');
-      setPasswordError("Please fill in all password fields");
+      dispatch({ type: 'SET_PASSWORD_ERROR', payload: "Please fill in all password fields" });
       return;
     }
     
     // Validate password length
-    if (passwordData.newPassword.length < 8) {
+    if (state.passwordData.newPassword.length < 8) {
       console.log('Password validation failed: Password too short');
-      setPasswordError("New password must be at least 8 characters long");
+      dispatch({ type: 'SET_PASSWORD_ERROR', payload: "New password must be at least 8 characters long" });
       return;
     }
     
     // Validate passwords match
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
+    if (state.passwordData.newPassword !== state.passwordData.confirmPassword) {
       console.log('Password validation failed: Passwords do not match');
-      setPasswordError("Passwords do not match");
+      dispatch({ type: 'SET_PASSWORD_ERROR', payload: "Passwords do not match" });
       return;
     }
     
-    setUpdatingPassword(true);
+    dispatch({ type: 'SET_UPDATING_PASSWORD', payload: true });
     console.log('Updating password...');
     try {
       // Call API to update password
       const payload = {
         password: {
-          current: passwordData.currentPassword,
-          new: passwordData.newPassword
+          current: state.passwordData.currentPassword,
+          new: state.passwordData.newPassword
         }
       };
       console.log('Password update payload:', payload);
       
-      const response = await accountService.updateAccount(payload);
+      const response = await updateAccount(payload);
       console.log('Password update response:', response);
       
       toast.success("Password updated successfully");
       
       // Reset form
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-      });
+      dispatch({ type: 'RESET_PASSWORD_DATA' });
     } catch (error) {
       console.error('Password update error:', error);
-      setPasswordError(error.message || "Failed to update password");
+      dispatch({ type: 'SET_PASSWORD_ERROR', payload: error.message || "Failed to update password" });
       toast.error(error.message || "Failed to update password");
     } finally {
-      setUpdatingPassword(false);
+      dispatch({ type: 'SET_UPDATING_PASSWORD', payload: false });
     }
   };
 
   // Get user initials for avatar
   const getUserInitials = () => {
-    if (formData.first_name && formData.last_name) {
-      return `${formData.first_name.charAt(0)}${formData.last_name.charAt(0)}`.toUpperCase();
+    if (state.formData.first_name && state.formData.last_name) {
+      return `${state.formData.first_name.charAt(0)}${state.formData.last_name.charAt(0)}`.toUpperCase();
     }
     return 'U';
   };
+
+  return {
+    state,
+    accountData,
+    loadingAccount,
+    accountError,
+    getAccount,
+    dispatch,
+    handleInputChange,
+    handlePasswordInputChange,
+    handleToggleEmailNotification,
+    handleTogglePushNotification,
+    handleTabKeyDown,
+    handleSaveChanges,
+    handlePasswordUpdate,
+    getUserInitials
+  };
+};
+
+export function AccountPage() {
+  const {
+    state,
+    accountData,
+    loadingAccount,
+    accountError,
+    getAccount,
+    dispatch,
+    handleInputChange,
+    handlePasswordInputChange,
+    handleToggleEmailNotification,
+    handleTogglePushNotification,
+    handleTabKeyDown,
+    handleSaveChanges,
+    handlePasswordUpdate,
+    getUserInitials
+  } = useAccountManagement();
+  
+  // Array of tab objects for navigation
+  const tabs = [
+    { id: "profile", name: "Profile" },
+    { id: "notifications", name: "Notifications" },
+    { id: "security", name: "Security" },
+    { id: "billing", name: "Billing" }
+  ];
   
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -244,7 +329,7 @@ export function AccountPage() {
           className="mt-2 md:mt-0 flex items-center gap-2"
           onClick={() => {
             console.log('Manual refresh requested');
-            fetchAccountData();
+            getAccount();
           }}
           disabled={loadingAccount}
         >
@@ -283,15 +368,15 @@ export function AccountPage() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', payload: tab.id })}
                   onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
                   role="tab"
-                  aria-selected={activeTab === tab.id}
+                  aria-selected={state.activeTab === tab.id}
                   aria-controls={`${tab.id}-panel`}
                   id={`${tab.id}-tab`}
-                  tabIndex={activeTab === tab.id ? 0 : -1}
+                  tabIndex={state.activeTab === tab.id ? 0 : -1}
                   className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors ${
-                    activeTab === tab.id
+                    state.activeTab === tab.id
                       ? "border-primary text-foreground"
                       : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
@@ -303,7 +388,7 @@ export function AccountPage() {
           </div>
           
           {/* Profile Tab */}
-          {activeTab === "profile" && (
+          {state.activeTab === "profile" && (
             <div 
               role="tabpanel" 
               id="profile-panel" 
@@ -339,7 +424,7 @@ export function AccountPage() {
                           name="first_name"
                           type="text"
                           className="w-full p-2 text-sm border rounded-lg bg-background"
-                          value={formData.first_name}
+                          value={state.formData.first_name}
                           onChange={handleInputChange}
                           aria-required="true"
                         />
@@ -353,7 +438,7 @@ export function AccountPage() {
                           name="last_name"
                           type="text"
                           className="w-full p-2 text-sm border rounded-lg bg-background"
-                          value={formData.last_name}
+                          value={state.formData.last_name}
                           onChange={handleInputChange}
                           aria-required="true"
                         />
@@ -369,7 +454,7 @@ export function AccountPage() {
                         name="email"
                         type="email"
                         className="w-full p-2 text-sm border rounded-lg bg-background"
-                        value={formData.email}
+                        value={state.formData.email}
                         onChange={handleInputChange}
                         aria-required="true"
                       />
@@ -384,7 +469,7 @@ export function AccountPage() {
                         name="phone"
                         type="tel"
                         className="w-full p-2 text-sm border rounded-lg bg-background"
-                        value={formData.phone}
+                        value={state.formData.phone}
                         onChange={handleInputChange}
                       />
                     </div>
@@ -403,9 +488,9 @@ export function AccountPage() {
                       <Button 
                         className="text-xs sm:text-sm flex items-center gap-2"
                         onClick={handleSaveChanges}
-                        disabled={savingProfile}
+                        disabled={state.savingProfile}
                       >
-                        {savingProfile && <Loader size={14} className="animate-spin" />}
+                        {state.savingProfile && <Loader size={14} className="animate-spin" />}
                         Save Changes
                       </Button>
                     </div>
@@ -449,7 +534,7 @@ export function AccountPage() {
           )}
           
           {/* Notifications Tab */}
-          {activeTab === "notifications" && (
+          {state.activeTab === "notifications" && (
             <div 
               role="tabpanel" 
               id="notifications-panel" 
@@ -460,7 +545,7 @@ export function AccountPage() {
                 <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Email Notifications</h3>
                 
                 <div className="divide-y">
-                  {Object.entries(emailNotificationStates).map(([key, enabled], index) => (
+                  {Object.entries(state.emailNotificationStates).map(([key, enabled], index) => (
                     <div key={key} className="py-3 sm:py-4 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium capitalize">{key.replace(/_/g, ' ')}</p>
@@ -480,7 +565,7 @@ export function AccountPage() {
                 <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Push Notifications</h3>
                 
                 <div className="divide-y">
-                  {Object.entries(pushNotificationStates).map(([key, enabled], index) => (
+                  {Object.entries(state.pushNotificationStates).map(([key, enabled], index) => (
                     <div key={key} className="py-3 sm:py-4 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium capitalize">{key.replace(/_/g, ' ')}</p>
@@ -500,9 +585,9 @@ export function AccountPage() {
                 <Button 
                   className="text-xs sm:text-sm flex items-center gap-2"
                   onClick={handleSaveChanges}
-                  disabled={savingProfile}
+                  disabled={state.savingProfile}
                 >
-                  {savingProfile && <Loader size={14} className="animate-spin" />}
+                  {state.savingProfile && <Loader size={14} className="animate-spin" />}
                   Save Notification Settings
                 </Button>
               </div>
@@ -510,7 +595,7 @@ export function AccountPage() {
           )}
           
           {/* Security Tab */}
-          {activeTab === "security" && (
+          {state.activeTab === "security" && (
             <div 
               role="tabpanel" 
               id="security-panel" 
@@ -520,58 +605,65 @@ export function AccountPage() {
               <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
                 <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Change Password</h3>
                 
-                <div className="grid gap-4">
+                <div className="max-w-md space-y-3 sm:space-y-4">
                   <div>
-                    <label htmlFor="currentPassword" className="block text-sm font-medium mb-1.5">Current Password</label>
+                    <label htmlFor="currentPassword" className="block text-sm font-medium mb-1">
+                      Current Password
+                    </label>
                     <input
                       id="currentPassword"
                       name="currentPassword"
                       type="password"
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      placeholder="Enter your current password"
-                      value={passwordData.currentPassword}
+                      className="w-full p-2 text-sm border rounded-lg bg-background"
+                      value={state.passwordData.currentPassword}
                       onChange={handlePasswordInputChange}
+                      aria-required="true"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="newPassword" className="block text-sm font-medium mb-1.5">New Password</label>
+                    <label htmlFor="newPassword" className="block text-sm font-medium mb-1">
+                      New Password
+                    </label>
                     <input
                       id="newPassword"
                       name="newPassword"
                       type="password"
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      placeholder="Enter new password"
-                      value={passwordData.newPassword}
+                      className="w-full p-2 text-sm border rounded-lg bg-background"
+                      value={state.passwordData.newPassword}
                       onChange={handlePasswordInputChange}
+                      aria-required="true"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Password must be at least 8 characters long</p>
                   </div>
                   
                   <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1.5">Confirm New Password</label>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
+                      Confirm New Password
+                    </label>
                     <input
                       id="confirmPassword"
                       name="confirmPassword"
                       type="password"
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      placeholder="Confirm new password"
-                      value={passwordData.confirmPassword}
+                      className="w-full p-2 text-sm border rounded-lg bg-background"
+                      value={state.passwordData.confirmPassword}
                       onChange={handlePasswordInputChange}
+                      aria-required="true"
                     />
                   </div>
                   
-                  {passwordError && (
-                    <div className="text-red-500 text-sm">{passwordError}</div>
+                  {state.passwordError && (
+                    <div className="text-red-500 text-sm">
+                      {state.passwordError}
+                    </div>
                   )}
                   
                   <div className="flex justify-end">
                     <Button 
+                      className="text-xs sm:text-sm flex items-center gap-2"
                       onClick={handlePasswordUpdate}
-                      disabled={updatingPassword}
-                      className="flex items-center gap-2"
+                      disabled={state.updatingPassword}
                     >
-                      {updatingPassword && <Loader size={14} className="animate-spin" />}
+                      {state.updatingPassword && <Loader size={14} className="animate-spin" />}
                       Update Password
                     </Button>
                   </div>
@@ -583,10 +675,82 @@ export function AccountPage() {
                 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm">Secure your account with two-factor authentication</p>
-                    <p className="text-xs text-muted-foreground mt-1">We'll send a verification code to your phone each time you log in</p>
+                    <p className="text-sm font-medium">2FA Status</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enhance your account security with two-factor authentication
+                    </p>
                   </div>
-                  <Button variant="outline">Enable 2FA</Button>
+                  <Button variant="outline" size="sm">
+                    Setup 2FA
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Billing Tab */}
+          {state.activeTab === "billing" && (
+            <div 
+              role="tabpanel" 
+              id="billing-panel" 
+              aria-labelledby="billing-tab"
+              className="space-y-4 sm:space-y-6"
+            >
+              <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Payment Methods</h3>
+                
+                <div className="divide-y">
+                  <div className="py-3 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="bg-blue-100 rounded-lg p-2 mr-3">
+                        <CreditCard className="h-5 w-5 text-blue-700" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Visa ending in 4242</p>
+                        <p className="text-xs text-muted-foreground">Expires 12/2024</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-xs mr-3 bg-accent-foreground/10 py-0.5 px-2 rounded-full">Default</span>
+                      <Button variant="outline" size="sm">
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <Button variant="outline" size="sm">
+                    Add Payment Method
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Billing History</h3>
+                
+                <div className="divide-y">
+                  <div className="py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Premium Plan</p>
+                      <p className="text-xs text-muted-foreground">May 3, 2023</p>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm mr-3">$29.99</span>
+                      <Button variant="outline" size="sm">View</Button>
+                    </div>
+                  </div>
+                  
+                  <div className="py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Premium Plan</p>
+                      <p className="text-xs text-muted-foreground">April 3, 2023</p>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm mr-3">$29.99</span>
+                      <Button variant="outline" size="sm">View</Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -597,25 +761,18 @@ export function AccountPage() {
   );
 }
 
-// Tab definitions
-const tabs = [
-  { id: "profile", name: "Profile" },
-  { id: "notifications", name: "Notifications" },
-  { id: "security", name: "Security" }
-];
-
-// Helper function to get notification descriptions
+// Helper function for notification descriptions
 const getNotificationDescription = (key) => {
   const descriptions = {
-    account_activity: "Get notified about account-related activities and security updates",
-    billing_alerts: "Receive alerts for billing and payment information",
-    post_engagement: "Get notified when users engage with your content",
-    product_updates: "Stay informed about new features and product updates",
-    push_notifications: "Enable push notifications on your device",
-    social_activity: "Get notified about your social media account activities",
-    analytics_reports: "Receive regular reports on your analytics and statistics",
-    campaign_status: "Get updates about your campaign status changes"
+    account_activity: "Get notified about important changes to your account",
+    billing_alerts: "Receive alerts about your billing status and subscription",
+    post_engagement: "Notifications about likes, comments, and shares on your posts",
+    product_updates: "Learn about new features and improvements",
+    analytics_reports: "Receive weekly and monthly analytics reports",
+    campaign_status: "Get updates on your campaign performance",
+    push_notifications: "Enable or disable all push notifications",
+    social_activity: "Get notified about mentions and tags on social media"
   };
   
-  return descriptions[key] || "Notification preference";
+  return descriptions[key] || "Notification preferences";
 }; 

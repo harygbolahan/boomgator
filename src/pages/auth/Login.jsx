@@ -16,11 +16,6 @@ export function Login() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Mock credentials (will be removed in production)
-  const mockCredentials = {
-    email: "ibrahimmdamilare@gmail.com",
-    password: "iBra@Hundred!Key"
-  };
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -92,12 +87,11 @@ export function Login() {
             <p className="text-sm sm:text-base text-muted-foreground mt-2">Log in to your account to continue</p>
           </div>
           
-          {/* Mock credentials info - Remove in production */}
-          <div className="mb-6 p-3 sm:p-4 text-sm bg-blue-50 text-blue-700 rounded-lg">
-            <p className="font-medium">Demo Credentials</p>
-            <p className="text-xs sm:text-sm">Email: {mockCredentials.email}</p>
-            <p className="text-xs sm:text-sm">Password: {mockCredentials.password}</p>
-          </div>
+          {error && (
+            <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
           
           {error && (
             <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg">
