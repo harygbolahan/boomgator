@@ -41,9 +41,8 @@ api.interceptors.response.use(
   (response) => {
     return response.data;
   },
-  (error) => {
-    const isAuthError = error.response?.status === 401 || error.response?.data?.message === 'Unauthenticated.';
-    const isLoginAttempt = error.config?.url.endsWith('/login');
+  (error) => {    const isAuthError = error.response?.status === 401 || error.response?.data?.message === 'Unauthenticated.' || error.response?.data?.message?.toLowerCase().includes('unauthenticated');
+    const isLoginAttempt = error.config?.url.endsWith('/login') || error.config?.url.endsWith('/register');
     
     if (isAuthError && !isLoginAttempt) {
       localStorage.removeItem('authToken');
@@ -51,6 +50,7 @@ api.interceptors.response.use(
       localStorage.removeItem('isLoggedIn');
       
       if (typeof window !== 'undefined') {
+        toast.error('Your session has expired. Please login again.');
         window.location.href = '/auth/login';
       }
       

@@ -17,13 +17,7 @@ import { CommentReplies } from '@/components/comments/CommentReplies';
 // Import Boom context
 import { useBoom } from "@/contexts/BoomContext";
 
-// Define platform mapping consistently
-const PLATFORMS = {
-  "398280132": "Facebook",
-  "398280133": "Instagram",
-  "398280134": "Twitter",
-  "398280135": "LinkedIn"
-};
+
 
 // EmptyState component
 const EmptyState = ({ searchQuery }) => (
@@ -124,6 +118,8 @@ export function AutomationPage() {
     try {
       setLoading(true);
       const data = await getAllAutomations();
+      console.log("Fetched automations:", data);
+      
       setAutomationsList(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {

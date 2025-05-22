@@ -16,6 +16,7 @@ export function PageNavigation() {
     { name: 'Integrations', path: '/integrations' },
     { name: 'Messenger Broadcast', path: '/messenger-broadcast' },
     { name: 'Notifications', path: '/notifications' },
+    { name: 'Pages Management', path: '/pages-management' },
     { name: 'Payment Plans', path: '/payment-plans' },
     { name: 'Setup Guide', path: '/setup-guide' },
     { name: 'Support', path: '/support' },

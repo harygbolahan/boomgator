@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RefreshCw } from "lucide-react";
 import { 
   Card, 
   CardContent, 
@@ -28,29 +29,39 @@ import { useBoom } from "@/contexts/BoomContext";
 
 export function CreateAutomationPage() {
   const navigate = useNavigate();
-  const { createAutomation, getPlatforms, getPages, platforms, pages } = useBoom();
+  const { createAutomation, getPlatforms, getPages, getAutoReplyServices, getPagePosts, syncPagePosts, platforms, pages } = useBoom();
   
   // State for form fields
   const [formData, setFormData] = useState({
     status: "Active",
-    service_id: "2", // Default to DM replies
+    service_id: "", // Will be set from available services
     incoming: "",
     platform_id: "",
     page_id: "",
-    content: ""
+    post_id: "",
+    label: "",
+    comment_content: "",
+    dm_content: ""
   });
   
-  // State for loading conditions
+  // State for services and loading conditions
+  const [services, setServices] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPlatforms, setLoadingPlatforms] = useState(true);
   const [loadingPages, setLoadingPages] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [syncingPosts, setSyncingPosts] = useState(false);
   
-  // Fetch platforms and pages on mount
+  // Fetch platforms, pages, and services on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoadingPlatforms(true);
         setLoadingPages(true);
+        setLoadingPosts(true);
+        setLoadingServices(true);
         
         // Fetch platforms
         const platformsResponse = await getPlatforms();
@@ -61,33 +72,101 @@ export function CreateAutomationPage() {
         const pagesResponse = await getPages();
         console.log("Pages response:", pagesResponse);
         setLoadingPages(false);
+        
+        // Fetch services
+        const servicesResponse = await getAutoReplyServices();
+        console.log("Services response:", servicesResponse);
+        setServices(servicesResponse);
+        setLoadingServices(false);
+        
+        // Fetch posts for the first page by default
+        if (pagesResponse.length > 0) {
+          const defaultPage = pagesResponse[0];
+          setFormData(prev => ({
+            ...prev,
+            page_id: defaultPage.page_id,
+            platform_id: defaultPage.platform_id
+          }));
+          
+          // Fetch posts for the default page
+          const postsResponse = await getPagePosts(defaultPage.page_id);
+          console.log("Posts response:", postsResponse);
+          setPosts(postsResponse);
+        }
+        
+        setLoadingPosts(false);
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load required data");
         setLoadingPlatforms(false);
         setLoadingPages(false);
+        setLoadingPosts(false);
+        setLoadingServices(false);
       }
     };
     
     fetchData();
-  }, [getPlatforms, getPages]);
+  }, [getPlatforms, getPages, getPagePosts, getAutoReplyServices]);
+  
+  // Handle post fetching when page is selected
+  const fetchPosts = async (pageId) => {
+    if (!pageId) return;
+    
+    setLoadingPosts(true);
+    try {
+      const response = await getPagePosts(pageId);
+      setPosts(response);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      toast.error("Failed to load posts");
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+  
+  // Handle post sync
+  const handleSyncPosts = async () => {
+    if (!formData.page_id) {
+      toast.error("Please select a page first");
+      return;
+    }
+    
+    setSyncingPosts(true);
+    try {
+      const response = await syncPagePosts(formData.page_id);
+      if (response?.data) {
+        setPosts(response.data);
+        toast.success(response.message);
+      }
+    } catch (error) {
+      console.error("Error syncing posts:", error);
+      toast.error("Failed to sync posts");
+    } finally {
+      setSyncingPosts(false);
+    }
+  };
   
   // Handle form field changes
   const handleChange = (field, value) => {
     if (field === "platform_id") {
       console.log("Platform selected:", value);
-      // When platform changes, reset page_id
+      // When platform changes, reset page_id and posts
       setFormData({
         ...formData,
         platform_id: value,
-        page_id: ""
+        page_id: "",
+        post_id: ""
       });
+      setPosts([]);
     } else if (field === "page_id") {
       console.log("Page selected:", value);
       setFormData({
         ...formData,
-        [field]: value
+        [field]: value,
+        post_id: ""
       });
+      // Fetch posts for the selected page
+      fetchPosts(value);
     } else {
       setFormData({
         ...formData,
@@ -105,19 +184,18 @@ export function CreateAutomationPage() {
   console.log("Current platform_id:", formData.platform_id);
   console.log("All pages:", pages);
   console.log("Filtered pages count:", filteredPages.length);
-  
-  // Handle form submission
+    // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate form
     if (!formData.incoming.trim()) {
-      toast.error("Please enter a trigger message");
+      toast.error("Please enter trigger keywords");
       return;
     }
     
-    if (!formData.content.trim()) {
-      toast.error("Please enter a reply message");
+    if (!formData.label.trim()) {
+      toast.error("Please enter a label for this automation");
       return;
     }
     
@@ -129,6 +207,31 @@ export function CreateAutomationPage() {
     if (!formData.page_id) {
       toast.error("Please select a page");
       return;
+    }    // Validate based on service type
+    if (formData.service_id === "1") {
+      if (!formData.comment_content.trim()) {
+        toast.error("Please enter a comment reply message");
+        return;
+      }
+      // Clear DM content for comment-only service
+      formData.dm_content = "";
+    }
+    
+    if (formData.service_id === "2") {
+      if (!formData.dm_content.trim()) {
+        toast.error("Please enter a direct message reply");
+        return;
+      }
+      // Clear comment content for DM-only service
+      formData.comment_content = "";
+      formData.post_id = ""; // Clear post_id as it's not needed for DM
+    }
+    
+    if (formData.service_id === "5") {
+      if (!formData.comment_content.trim() && !formData.dm_content.trim()) {
+        toast.error("Please enter at least one reply message (comment or DM)");
+        return;
+      }
     }
     
     try {
@@ -202,22 +305,27 @@ export function CreateAutomationPage() {
           <CardContent className="space-y-6">
             {/* Service Type */}
             <div className="space-y-2">
-              <Label htmlFor="service_id">Service Type</Label>
-              <Select
+              <Label htmlFor="service_id">Service Type</Label>              <Select
                 value={formData.service_id}
                 onValueChange={(value) => handleChange("service_id", value)}
-                disabled={isLoading}
+                disabled={isLoading || loadingServices}
               >
                 <SelectTrigger id="service_id">
-                  <SelectValue placeholder="Select service type" />
+                  <SelectValue placeholder={loadingServices ? "Loading services..." : "Select service type"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Comment Replies (respond to comments)</SelectItem>
-                  <SelectItem value="2">DM Replies (respond to direct messages)</SelectItem>
+                  {services.map((service) => (
+                    <SelectItem key={service.id} value={service.id.toString()}>
+                      {service.service}
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        (Daily limit: {service.limit_daily})
+                      </span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Choose whether this automation will reply to comments or direct messages
+                Choose how your automation should respond to interactions
               </p>
             </div>
             
@@ -227,10 +335,10 @@ export function CreateAutomationPage() {
               <Select
                 value={formData.platform_id}
                 onValueChange={(value) => handleChange("platform_id", value)}
-                disabled={isLoading || loadingPlatforms}
+                disabled={isLoading}
               >
                 <SelectTrigger id="platform_id">
-                  <SelectValue placeholder={loadingPlatforms ? "Loading platforms..." : "Select platform"} />
+                  <SelectValue placeholder="Select platform" />
                 </SelectTrigger>
                 <SelectContent>
                   {platforms.map((platform) => (
@@ -251,7 +359,7 @@ export function CreateAutomationPage() {
               <Select
                 value={formData.page_id}
                 onValueChange={(value) => handleChange("page_id", value)}
-                disabled={isLoading || loadingPages || !formData.platform_id}
+                disabled={isLoading || !formData.platform_id}
               >
                 <SelectTrigger id="page_id">
                   <SelectValue 
@@ -277,6 +385,21 @@ export function CreateAutomationPage() {
               </p>
             </div>
             
+            {/* Label */}
+            <div className="space-y-2">
+              <Label htmlFor="label">Label</Label>
+              <Input
+                id="label"
+                placeholder="Enter a label for this automation"
+                value={formData.label}
+                onChange={(e) => handleChange("label", e.target.value)}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                A label to help you identify this automation
+              </p>
+            </div>
+            
             {/* Status */}
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
@@ -296,38 +419,108 @@ export function CreateAutomationPage() {
               <p className="text-xs text-muted-foreground">
                 Set whether this automation is active or paused
               </p>
-            </div>
+            </div>            {/* Post ID - Only show for comment replies */}
+            {(formData.service_id === "1" || formData.service_id === "5") && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="post_id">Post ID</Label>
+                  {formData.page_id && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSyncPosts}
+                      disabled={syncingPosts || isLoading}
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${syncingPosts ? 'animate-spin' : ''}`} />
+                      {syncingPosts ? 'Syncing...' : 'Sync Posts'}
+                    </Button>
+                  )}
+                </div>
+                <Select
+                  value={formData.post_id}
+                  onValueChange={(value) => handleChange("post_id", value)}
+                  disabled={isLoading || loadingPosts || !formData.page_id}
+                >
+                  <SelectTrigger id="post_id">
+                    <SelectValue 
+                      placeholder={
+                        loadingPosts 
+                          ? "Loading posts..." 
+                          : !formData.page_id 
+                            ? "Select a page first" 
+                            : "Select post (optional)"
+                      } 
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Posts</SelectItem>
+                    {posts.map((post) => (
+                      <SelectItem key={post.post_id} value={post.post_id}>
+                        {post.messages?.substring(0, 50)}...
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({new Date(post.created_time).toLocaleDateString()})
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Select a specific post to limit this automation to, or leave empty to apply to all posts
+                </p>
+              </div>
+            )}
             
             {/* Trigger - incoming */}
             <div className="space-y-2">
-              <Label htmlFor="incoming">Trigger Message</Label>
+              <Label htmlFor="incoming">Trigger Keywords</Label>
               <Input
                 id="incoming"
-                placeholder="Enter the message that will trigger this automation"
+                placeholder="Enter keywords that will trigger this automation (comma separated)"
                 value={formData.incoming}
                 onChange={(e) => handleChange("incoming", e.target.value)}
                 disabled={isLoading}
               />
               <p className="text-xs text-muted-foreground">
-                When someone sends this message, your automation will respond
+                When someone sends a message containing these keywords, your automation will respond
               </p>
             </div>
-            
-            {/* Response - content */}
-            <div className="space-y-2">
-              <Label htmlFor="content">Response Message</Label>
-              <Textarea
-                id="content"
-                placeholder="Enter the automatic response message"
-                value={formData.content}
-                onChange={(e) => handleChange("content", e.target.value)}
-                rows={4}
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground">
-                This is the message that will be sent in response to the trigger
-              </p>
-            </div>
+
+            {/* Comment Response - Show for comment replies */}
+            {(formData.service_id === "1" || formData.service_id === "5") && (
+              <div className="space-y-2">
+                <Label htmlFor="comment_content">Comment Response</Label>
+                <Textarea
+                  id="comment_content"
+                  placeholder="Enter the comment reply message"
+                  value={formData.comment_content}
+                  onChange={(e) => handleChange("comment_content", e.target.value)}
+                  rows={3}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This message will be posted as a comment reply
+                </p>
+              </div>
+            )}
+
+            {/* DM Response - Show for DM replies */}
+            {(formData.service_id === "2" || formData.service_id === "5") && (
+              <div className="space-y-2">
+                <Label htmlFor="dm_content">Direct Message Response</Label>
+                <Textarea
+                  id="dm_content"
+                  placeholder="Enter the direct message reply"
+                  value={formData.dm_content}
+                  onChange={(e) => handleChange("dm_content", e.target.value)}
+                  rows={3}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This message will be sent as a direct message
+                </p>
+              </div>
+            )}
           </CardContent>
           
           <CardFooter className="flex justify-between">
@@ -358,4 +551,4 @@ export function CreateAutomationPage() {
       </Card>
     </div>
   );
-} 
+}

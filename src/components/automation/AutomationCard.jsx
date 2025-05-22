@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Play, Pause, Edit, MoreHorizontal, X, ExternalLink, Copy } from "lucide-react";
@@ -187,16 +188,69 @@ export const AutomationCard = ({ automation, onStatusChange, onEdit, onDelete, o
             </div>
           </div>
         </CardHeader>
-        
-        <CardContent className="pb-3">
-          <div className="grid gap-2">
+          <CardContent className="pb-3">
+          <div className="grid gap-4">
+            {/* Label */}
+            {automation.label && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Label:</h4>
+                <p className="text-sm text-muted-foreground">{automation.label}</p>
+              </div>
+            )}
+            
+            {/* Service Type */}
             <div>
-              <h4 className="text-sm font-medium mb-1">Trigger:</h4>
+              <h4 className="text-sm font-medium mb-1">Service Type:</h4>
+              <div className="flex flex-wrap gap-2">
+                {automation.service_id === "1" && (
+                  <Badge variant="secondary">Comment Only</Badge>
+                )}
+                {automation.service_id === "2" && (
+                  <Badge variant="secondary">DM Only</Badge>
+                )}
+                {automation.service_id === "5" && (
+                  <Badge variant="secondary">Comment & DM</Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Trigger */}
+            <div>
+              <h4 className="text-sm font-medium mb-1">Trigger Keywords:</h4>
               <p className="text-sm text-muted-foreground">{automation.incoming}</p>
             </div>
-            <div>
-              <h4 className="text-sm font-medium mb-1">Response:</h4>
-              <p className="text-sm text-muted-foreground">{automation.content}</p>
+            
+            {/* Responses */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">Responses:</h4>
+              {automation.comment_content && (
+                <div className="bg-muted/50 p-2 rounded-md">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Comment Reply:</p>
+                  <p className="text-sm">{automation.comment_content}</p>
+                </div>
+              )}
+              {automation.dm_content && (
+                <div className="bg-muted/50 p-2 rounded-md">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">DM Reply:</p>
+                  <p className="text-sm">{automation.dm_content}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Statistics */}
+            <div className="flex flex-wrap gap-3">
+              {automation.trigger_count !== undefined && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-1">Triggers:</h4>
+                  <p className="text-sm font-medium">{automation.trigger_count}</p>
+                </div>
+              )}
+              {automation.action_count !== undefined && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-1">Actions:</h4>
+                  <p className="text-sm font-medium">{automation.action_count}</p>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

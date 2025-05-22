@@ -52,20 +52,47 @@ export const BoomProvider = ({ children }) => {
   const [loadingCommentReplies, setLoadingCommentReplies] = useState(false);
   const [commentRepliesError, setCommentRepliesError] = useState(null);
   
+  // Auto reply services data
+  const [autoReplyServices, setAutoReplyServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+  const [servicesError, setServicesError] = useState(null);
+
   // API instance with auth token
   const api = useCallback(
     (customConfig = {}) => {
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...customConfig.headers,
-      };
-      
-      return axios.create({
+      const instance = axios.create({
         baseURL: API_BASE_URL,
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...customConfig.headers,
+        },
         ...customConfig,
       });
+
+      // Add response interceptor to handle unauthorized errors
+      instance.interceptors.response.use(
+        (response) => response,
+        (error) => {
+          const isAuthError = error.response?.status === 401 || 
+                            error.response?.data?.message === 'Unauthenticated.' ||
+                            error.response?.data?.message?.toLowerCase().includes('unauthenticated');
+                            
+          if (isAuthError) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            localStorage.removeItem('isLoggedIn');
+            
+            if (typeof window !== 'undefined') {
+              toast.error('Your session has expired. Please login again.');
+              window.location.href = '/auth/login';
+            }
+          }
+          return Promise.reject(error);
+        }
+      );
+
+      return instance;
     },
     [token]
   );
@@ -312,26 +339,16 @@ export const BoomProvider = ({ children }) => {
   // =====================
   // PLATFORM INTEGRATION FUNCTIONS
   // =====================
-  
-  const getPlatformAuthLink = useCallback(async (platformType) => {
+    const getPlatformAuthLink = useCallback(async (platformType) => {
     if (!isAuthenticated) return null;
     
     try {
-      const response = await fetch('https://ai.loomsuite.com/api/link/social/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          type: platformType
-        })
+      const response = await api().post('/link/social/login', {
+        type: platformType
       });
       
-      const data = await response.json();
-      
-      if (data.status === 'success' && data.link) {
-        return data.link;
+      if (response.data.status === 'success' && response.data.link) {
+        return response.data.link;
       } else {
         throw new Error("Failed to get platform authorization link");
       }
@@ -339,27 +356,17 @@ export const BoomProvider = ({ children }) => {
       toast.error(`Error getting platform link: ${error.message}`);
       return null;
     }
-  }, [isAuthenticated, token]);
-  
-  const getPagePosts = useCallback(async (pageId) => {
+  }, [isAuthenticated, api]);
+    const getPagePosts = useCallback(async (pageId) => {
     if (!isAuthenticated) return [];
     
     try {
-      const response = await fetch('https://ai.loomsuite.com/api/ai/platforms/pages/post', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          page_id: pageId
-        })
+      const response = await api().post('/platforms/pages/post', {
+        page_id: pageId
       });
       
-      const data = await response.json();
-      
-      if (Array.isArray(data)) {
-        return data;
+      if (Array.isArray(response.data)) {
+        return response.data;
       } else {
         throw new Error("Failed to fetch page posts");
       }
@@ -367,36 +374,27 @@ export const BoomProvider = ({ children }) => {
       toast.error(`Error loading page posts: ${error.message}`);
       return [];
     }
-  }, [isAuthenticated, token]);
-  
-  const syncPagePosts = useCallback(async (pageId) => {
+  }, [isAuthenticated, api]);
+    const syncPagePosts = useCallback(async (pageId) => {
     if (!isAuthenticated) return null;
     
     try {
-      const response = await fetch('https://ai.loomsuite.com/api/ai/platforms/pages/sync-posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          page_id: pageId
-        })
+      const response = await api().post('/platforms/pages/sync-posts', {
+        page_id: pageId
       });
       
-      const data = await response.json();
-      
-      if (data.message) {
-        toast.success(`${data.message}: Added ${data.new_posts} new posts`);
-        return data;
+      if (response.data.message) {
+        toast.success(`${response.data.message}: Added ${response.data.new_posts} new posts`);
+        return response.data;
       } else {
         throw new Error("Failed to sync page posts");
       }
     } catch (error) {
-      toast.error(`Error syncing page posts: ${error.message}`);
+      console.error('Error syncing page posts:', error);
+      toast.error(`Error syncing page posts: ${error?.response?.data?.message || error?.response?.data?.error || error?.message}`);
       return null;
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, api]);
   
   const getPlatformById = useCallback(async (platformId) => {
     if (!isAuthenticated) return null;
@@ -419,6 +417,21 @@ export const BoomProvider = ({ children }) => {
       return null;
     }
   }, [isAuthenticated, token]);
+  
+  // Get all posts from all pages
+  const getAllPagePosts = useCallback(async () => {
+    if (!isAuthenticated) return [];
+    
+    try {
+      const response = await api().get('/platforms/pages/all-posts');
+      return response.data;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message;
+      toast.error(`Error loading all page posts: ${errorMsg}`);
+      console.error('Error fetching all page posts:', error);
+      return [];
+    }
+  }, [isAuthenticated, api]);
   
   // =====================
   // SCHEDULER FUNCTIONS
@@ -500,19 +513,43 @@ export const BoomProvider = ({ children }) => {
       setLoadingScheduledPosts(false);
     }
   }, [isAuthenticated, api, getScheduledPosts, token]);
+
+  const deleteScheduledPost = useCallback(async (postId) => {
+    if (!isAuthenticated) return false;
+    
+    setLoadingScheduledPosts(true);
+    setScheduledPostsError(null);
+    
+    try {
+      const response = await api().post('/schedule-posts/delete', { post_id: postId });
+      await getScheduledPosts(); // Refresh the list
+      toast.success('Post deleted successfully');
+      return true;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message;
+      setScheduledPostsError(errorMsg);
+      toast.error(`Error deleting post: ${errorMsg}`);
+      return false;
+    } finally {
+      setLoadingScheduledPosts(false);
+    }
+  }, [isAuthenticated, api, getScheduledPosts]);
   
   // =====================
   // COMMENT REPLY FUNCTIONS
   // =====================
-  
-  const getAllCommentReplies = useCallback(async () => {
-    if (!isAuthenticated) return [];
+    const getAllCommentReplies = useCallback(async ({ post_id }) => {
+    if (!isAuthenticated || !post_id) return [];
     
     setLoadingCommentReplies(true);
     setCommentRepliesError(null);
     
     try {
-      const response = await api().get('/comment-replies');
+      console.log('Sending request to get comments with payload:', { post_id });
+      const response = await api().post('/comment-replies', { post_id });
+      console.log('Comment replies response:', response.data);
+      console.log('Full response:', response);
+      
       setCommentReplies(response.data);
       return response.data;
     } catch (error) {
@@ -537,7 +574,7 @@ export const BoomProvider = ({ children }) => {
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message;
       setCommentRepliesError(errorMsg);
-      toast.error(`Error loading comment replies: ${errorMsg}`);
+      toast.error(`Error loading comment replies by ID: ${errorMsg}`);
       return [];
     } finally {
       setLoadingCommentReplies(false);
@@ -551,23 +588,79 @@ export const BoomProvider = ({ children }) => {
     setCommentRepliesError(null);
     
     try {
-      const response = await api().post('/add-comment', commentData);
-      await getAllCommentReplies(); // Refresh the list
-      toast.success('Comment reply added successfully');
+      console.log('Sending comment reply with data:', {
+        page_id: commentData.page_id,
+        post_id: commentData.post_id,
+        comment_id: commentData.comment_id,
+        reply_message: commentData.content
+      });
+      
+      const response = await api().post('/add-comment', {
+        page_id: commentData.page_id,
+        post_id: commentData.post_id,
+        comment_id: commentData.comment_id,
+        reply_message: commentData.content
+      });
+
+      console.log('API response for comment reply:', response.data);
+      
+      if (response.data && response.data.message) {
+        toast.success(response.data.message);
+      } else {
+        toast.success('Reply sent successfully');
+      }
+      
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      console.error('Error in addCommentReply:', error);
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+      } else if (error.request) {
+        console.error('Error request - no response received:', error.request);
+      } else {
+        console.error('Error message:', error.message);
+      }
+      
+      const errorMsg = error.response?.data?.message || error.message || 'Unknown error occurred';
       setCommentRepliesError(errorMsg);
       toast.error(`Error adding comment reply: ${errorMsg}`);
-      return null;
+      throw error;
     } finally {
       setLoadingCommentReplies(false);
     }
-  }, [isAuthenticated, api, getAllCommentReplies]);
+  }, [isAuthenticated, api]);
+  
+  // Get auto reply services
+  const getAutoReplyServices = useCallback(async () => {
+    if (!isAuthenticated) return [];
+    
+    setLoadingServices(true);
+    setServicesError(null);
+    
+    try {
+      const response = await api().get('/subscriptions/autoreply');
+      console.log('services reply',response);
+      
+      setAutoReplyServices(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message;
+      setServicesError(errorMsg);
+      toast.error(`Error loading auto reply services: ${errorMsg}`);
+      return [];
+    } finally {
+      setLoadingServices(false);
+    }
+  }, [isAuthenticated, api]);
+
+
   
   // General loading state
   const isLoading = loadingAccount || loadingWallet || loadingHome || loadingAutomations || 
-                    loadingScheduledPosts || loadingCommentReplies || loadingPlatforms || loadingPages;
+                    loadingScheduledPosts || loadingCommentReplies || loadingPlatforms || loadingPages || loadingServices;
   
   // Refresh all data
   const refreshAll = useCallback(() => {
@@ -579,9 +672,15 @@ export const BoomProvider = ({ children }) => {
     getAllCommentReplies();
     getPlatforms();
     getPages();
-  }, [getAccount, getWallet, getHomeData, getAllAutomations, getScheduledPosts, getAllCommentReplies, getPlatforms, getPages]);
-  
-  const value = {
+    getAutoReplyServices();
+  }, [getAccount, getWallet, getHomeData, getAllAutomations, getScheduledPosts, getAllCommentReplies, getPlatforms, getPages, getAutoReplyServices]);
+    const value = {
+    // Auto Reply Services
+    autoReplyServices,
+    loadingServices,
+    servicesError,
+    getAutoReplyServices,
+    
     // Account
     accountData,
     loadingAccount,
@@ -624,6 +723,7 @@ export const BoomProvider = ({ children }) => {
     getPages,
     getPagePosts,
     syncPagePosts,
+    getAllPagePosts,
     
     // Scheduled Posts
     scheduledPosts,
@@ -632,6 +732,7 @@ export const BoomProvider = ({ children }) => {
     getScheduledPosts,
     getScheduledPostById,
     createScheduledPost,
+    deleteScheduledPost,
     
     // Comment Replies
     commentReplies,
@@ -640,6 +741,12 @@ export const BoomProvider = ({ children }) => {
     getAllCommentReplies,
     getCommentRepliesByCommentId,
     addCommentReply,
+    
+    // Auto Reply Services
+    autoReplyServices,
+    loadingServices,
+    servicesError,
+    getAutoReplyServices,
     
     // General
     isLoading,
@@ -658,4 +765,4 @@ export const useBoom = () => {
   return context;
 };
 
-export default BoomContext; 
+export default BoomContext;

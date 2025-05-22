@@ -22,7 +22,8 @@ import {
   AlertCircle,
   MessageSquare,
   Clock,
-  Loader
+  Loader,
+  Layers
 } from "lucide-react";
 import { PageNavigation } from "../PageNavigation";
 import { UserMenu } from "./UserMenu";
@@ -32,6 +33,7 @@ const navItems = [
   { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-5 h-5" /> },
   { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" /> },
   { name: "Social Platforms", path: "/social-platforms", icon: <Share2 className="w-5 h-5" /> },
+  { name: "Pages Management", path: "/pages-management", icon: <Layers className="w-5 h-5" /> },
   { name: "Account", path: "/account", icon: <UserCircle className="w-5 h-5" /> },
   { name: "Support", path: "/support", icon: <LifeBuoy className="w-5 h-5" /> },
   { name: "Logout", path: "/logout", icon: <LogOut className="w-5 h-5" /> },

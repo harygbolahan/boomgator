@@ -33,8 +33,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { Calendar, Clock, Image, Video, AlertCircle, Check, X, RefreshCw, ChevronRight, Copy } from "lucide-react";
+import { Calendar, Clock, Image, Video, AlertCircle, Check, X, RefreshCw, ChevronRight, Copy, Trash2 } from "lucide-react";
 
 const statusColors = {
   Scheduled: "bg-blue-100 text-blue-800 border-blue-200",
@@ -54,6 +55,7 @@ export const ContentSchedulerPage = () => {
     getScheduledPosts, 
     getScheduledPostById, 
     createScheduledPost,
+    deleteScheduledPost,
     platforms,
     loadingPlatforms,
     getPlatforms,
@@ -70,6 +72,9 @@ export const ContentSchedulerPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [formData, setFormData] = useState({
     content: "",
     scheduled_time: "",
@@ -281,7 +286,6 @@ export const ContentSchedulerPage = () => {
       }
     }
   };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -317,9 +321,9 @@ export const ContentSchedulerPage = () => {
       const formDataToSubmit = new FormData();
       formDataToSubmit.append('content', formData.content);
       formDataToSubmit.append('scheduled_time', scheduledDateTime);
-      formDataToSubmit.append('status', formData.status);
-      formDataToSubmit.append('platform_id', formData.platform_id);
-      formDataToSubmit.append('page_id', formData.page_id);
+      formDataToSubmit.append('status', 'Scheduled');
+      formDataToSubmit.append('platform_id', String(formData.platform_id));
+      formDataToSubmit.append('page_id', String(formData.page_id));
       
       // Append files if they exist
       if (formData.image_path) {
@@ -331,29 +335,32 @@ export const ContentSchedulerPage = () => {
       }
       
       // Submit the form data using a custom API call to handle multipart/form-data
-      await createScheduledPost(formDataToSubmit);
+      const response = await createScheduledPost(formDataToSubmit);
       
-      // Reset form
-      setFormData({
-        content: "",
-        scheduled_time: "",
-        scheduled_date: "",
-        platform_id: "",
-        page_id: "",
-        status: "Scheduled",
-        image_path: null,
-        video_path: null,
-      });
-      setSelectedImage(null);
-      setSelectedVideo(null);
-      
-      // Reset file inputs
-      if (imageInputRef.current) imageInputRef.current.value = "";
-      if (videoInputRef.current) videoInputRef.current.value = "";
-      
-      // Refresh posts list
-      fetchScheduledPosts();
-      
+      if (response) {
+        toast.success('Post scheduled successfully');
+        
+        // Reset form
+        setFormData({
+          content: "",
+          scheduled_time: "",
+          scheduled_date: "",
+          platform_id: "",
+          page_id: "",
+          status: "Scheduled",
+          image_path: null,
+          video_path: null,
+        });
+        setSelectedImage(null);
+        setSelectedVideo(null);
+        
+        // Reset file inputs
+        if (imageInputRef.current) imageInputRef.current.value = "";
+        if (videoInputRef.current) videoInputRef.current.value = "";
+        
+        // Refresh posts list and move to posts tab
+        await fetchScheduledPosts();
+      }
     } catch (error) {
       toast.error(error.message || "Failed to schedule post");
     } finally {
@@ -371,6 +378,32 @@ export const ContentSchedulerPage = () => {
   const filteredPosts = statusFilter === "All" 
     ? posts 
     : posts.filter(post => post.status.toLowerCase() === statusFilter.toLowerCase());
+
+  // Function to handle delete confirmation dialog
+  const openDeleteDialog = (post) => {
+    setPostToDelete(post);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Function to delete a post
+  const handleDeletePost = async () => {
+    if (!postToDelete) return;
+    
+    setDeleteLoading(true);
+    
+    try {
+      const success = await deleteScheduledPost(postToDelete.id);
+      if (success) {
+        setIsDeleteDialogOpen(false);
+        setPostToDelete(null);
+        await fetchScheduledPosts();
+      }
+    } catch (error) {
+      console.error("Error deleting post:", error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
     <div className="mx-auto px-4 space-y-8 w-full max-w-[380px] sm:max-w-none bg-gray-50 dark:bg-gray-900 min-h-screen py-12">
@@ -539,7 +572,16 @@ export const ContentSchedulerPage = () => {
                         )}
                         
                         {/* Card Footer with Actions */}
-                        <div className="px-5 py-4 bg-gray-50/50 dark:bg-gray-750/30 flex justify-end group-hover:bg-gray-100 dark:group-hover:bg-gray-700/50 transition-colors">
+                        <div className="px-5 py-4 bg-gray-50/50 dark:bg-gray-750/30 flex justify-between group-hover:bg-gray-100 dark:group-hover:bg-gray-700/50 transition-colors">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-sm border-red-100 text-red-600 hover:text-red-700 hover:bg-red-50 dark:border-red-800/50 dark:text-red-400 dark:hover:bg-red-900/30"
+                            onClick={() => openDeleteDialog(post)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -971,6 +1013,65 @@ export const ContentSchedulerPage = () => {
               </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
+          <DialogHeader className="p-6 bg-red-50 dark:bg-red-900/30 border-b border-red-100 dark:border-red-800/50">
+            <DialogTitle className="text-xl font-bold text-red-700 dark:text-red-400 flex items-center">
+              <Trash2 className="w-5 h-5 mr-2" />
+              Delete Scheduled Post
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400 mt-1">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {postToDelete && (
+            <div className="p-6">
+              <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 mb-4">
+                <p className="text-sm line-clamp-3 text-gray-800 dark:text-gray-200">
+                  {postToDelete.content}
+                </p>
+                
+                <div className="mt-3 flex items-center text-xs text-gray-500 dark:text-gray-400 space-x-2">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <span>{format(parseISO(postToDelete.scheduled_time), "MMM d, yyyy 'at' h:mm a")}</span>
+                </div>
+              </div>
+              
+              <DialogFooter className="flex space-x-3 mt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 border-gray-200 dark:border-gray-700"
+                  onClick={() => setIsDeleteDialogOpen(false)}
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  onClick={handleDeletePost}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                      Deleting...
+                    </div>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Post
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

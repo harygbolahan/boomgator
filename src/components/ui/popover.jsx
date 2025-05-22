@@ -2,16 +2,29 @@ import * as React from "react";
 
 const PopoverContext = React.createContext(null);
 
-const Popover = React.forwardRef(({ children, ...props }, ref) => {
-  const [open, setOpen] = React.useState(false);
+const Popover = React.forwardRef(({ children, open: controlledOpen, onOpenChange, ...props }, ref) => {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const popoverRef = React.useRef(null);
+  
+  // Support both controlled and uncontrolled modes
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  
+  const handleOpenChange = React.useCallback((newOpen) => {
+    if (!isControlled) {
+      setUncontrolledOpen(newOpen);
+    }
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    }
+  }, [isControlled, onOpenChange]);
 
   React.useEffect(() => {
     if (!open) return;
 
     const handleClickOutside = (event) => {
       if (popoverRef.current && !popoverRef.current.contains(event.target)) {
-        setOpen(false);
+        handleOpenChange(false);
       }
     };
 
@@ -19,10 +32,10 @@ const Popover = React.forwardRef(({ children, ...props }, ref) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [open]);
+  }, [open, handleOpenChange]);
 
   return (
-    <PopoverContext.Provider value={{ open, setOpen }}>
+    <PopoverContext.Provider value={{ open, setOpen: handleOpenChange }}>
       <div ref={(node) => {
         // Handle both refs
         if (ref) {
@@ -45,6 +58,18 @@ const PopoverTrigger = React.forwardRef(({ className, asChild = false, children,
   }
 
   const { open, setOpen } = context;
+  
+  // If asChild is true, clone the child and pass the necessary props
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, {
+      ref,
+      onClick: (e) => {
+        children.props.onClick?.(e);
+        setOpen(!open);
+      },
+      ...props
+    });
+  }
 
   return (
     <button

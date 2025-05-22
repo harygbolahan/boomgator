@@ -22,6 +22,7 @@ import { PaymentPlansPage } from "@/pages/PaymentPlansPage"
 import { NotificationsPage } from "@/pages/NotificationsPage"
 import { ContentSchedulerPage } from "@/pages/ContentSchedulerPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
+import PagesManagementPage from "@/pages/PagesManagementPage"
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"
@@ -94,6 +95,7 @@ function App() {
               <Route path="/support" element={<SupportPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/social-platforms" element={<PagePostsPage />} />
+              <Route path="/pages-management" element={<PagesManagementPage />} />
             </Route>
             
             {/* 404 Not Found */}
