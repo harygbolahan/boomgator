@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   LayoutDashboard, 
   Share2, 
@@ -23,20 +24,27 @@ import {
   MessageSquare,
   Clock,
   Loader,
-  Layers
+  Layers,
+  Package,
+  Sparkles
 } from "lucide-react";
 import { PageNavigation } from "../PageNavigation";
 import { UserMenu } from "./UserMenu";
 
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+  {name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" />},
   { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-5 h-5" /> },
+  { name: "AI Content Creator", path: "/ai-content-creator", icon: <Sparkles className="w-5 h-5" /> },
   { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" /> },
-  { name: "Social Platforms", path: "/social-platforms", icon: <Share2 className="w-5 h-5" /> },
+  { name: "Messenger Broadcast", path: "/messenger-broadcast", icon: <MessageSquare className="w-5 h-5" /> },
   { name: "Pages Management", path: "/pages-management", icon: <Layers className="w-5 h-5" /> },
+  { name: "Live Messaging", path: "/live-messaging", icon: <MessageSquare className="w-5 h-5" /> },
+  { name: "Subscription", path: "/subscription", icon: <Package className="w-5 h-5" /> },
   { name: "Account", path: "/account", icon: <UserCircle className="w-5 h-5" /> },
   { name: "Support", path: "/support", icon: <LifeBuoy className="w-5 h-5" /> },
   { name: "Logout", path: "/logout", icon: <LogOut className="w-5 h-5" /> },
+
 ];
 
 // Fake notifications data
@@ -83,6 +91,7 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -102,9 +111,15 @@ export function Layout() {
   };
   
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("hasCompletedSetup");
-    navigate("/login");
+    try {
+      logout();
+      localStorage.clear();
+      navigate("/auth/login", { replace: true });
+    } catch (error) {
+      console.error('Error during logout:', error);
+      localStorage.clear();
+      navigate("/auth/login", { replace: true });
+    }
   };
 
   const handleNavItemClick = (item) => {

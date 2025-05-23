@@ -1,48 +1,212 @@
-import { useState } from "react";
-import { MessengerBroadcast } from "@/components/MessengerBroadcast";
+import { useState, useEffect, useCallback } from "react";
+import { useBoom } from "@/contexts/BoomContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Facebook, AlertCircle, CheckCircle, Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DataTable } from "@/components/ui/data-table";
+import { Facebook, AlertCircle, CheckCircle, Info, Trash2, Send, Users, MessageSquare, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "react-toastify";
 
 export function MessengerBroadcastPage() {
+  const { 
+    getSubscribers, 
+    getSubscribersByLabel, 
+    deleteSubscriber, 
+    sendBroadcast,
+    getPages
+  } = useBoom();
+
   const [isConnected, setIsConnected] = useState(true);
-  const [recentBroadcast, setRecentBroadcast] = useState(null);
   const [activeTab, setActiveTab] = useState("broadcast");
-  
-  // Statistics for the dashboard
-  const stats = {
-    totalSubscribers: 1250,
-    newSubscribers: 67,
-    openRate: 28.4,
-    clickRate: 12.7,
-    reachRate: 94.3
+  const [subscribers, setSubscribers] = useState([]);
+  const [selectedLabel, setSelectedLabel] = useState("");
+  const [uniqueLabels, setUniqueLabels] = useState([]);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [selectedPage, setSelectedPage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [pages, setPages] = useState([]);
+
+  // Move loadData to useCallback so it can be reused
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Load subscribers
+      const subscribersData = await getSubscribers();
+      setSubscribers(subscribersData);
+      
+      // Extract unique labels
+      const labels = [...new Set(subscribersData.map(sub => sub.label))];
+      setUniqueLabels(labels);
+      
+      // Load pages
+      const pagesData = await getPages();
+      // console.log('Full pages response:', pagesData);
+      
+      if (Array.isArray(pagesData)) {
+        // Create a Map to store unique pages using page_id as the key
+        const uniquePagesMap = new Map();
+        
+        pagesData.forEach(page => {
+          // console.log('Processing page:', page);
+          if (!uniquePagesMap.has(page.id)) {
+            uniquePagesMap.set(page.id, {
+              page_id: page.id,
+              page_name: page.name,
+              picture: page.picture,
+              ...page
+            });
+          }
+        });
+        
+        // Convert Map values back to array
+        const formattedPages = Array.from(uniquePagesMap.values());
+        // console.log('Formatted pages:', formattedPages);
+        
+        // Sort pages by name for better organization
+        formattedPages.sort((a, b) => a.page_name.localeCompare(b.page_name));
+        
+        setPages(formattedPages);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Error loading data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [getSubscribers, getPages]);
+
+  // Use loadData in useEffect
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Handle refresh click
+  const handleRefresh = async () => {
+    await loadData();
+    toast.success('Data refreshed successfully');
   };
 
-  const handleBroadcastSend = (broadcastData) => {
-    setRecentBroadcast(broadcastData);
-    
-    // In a real app, this would call an API to send the broadcast
-    console.log("Broadcasting message:", broadcastData);
+  // Handle label change
+  const handleLabelChange = async (label) => {
+    setSelectedLabel(label);
+    setLoading(true);
+    try {
+      const filteredSubscribers = await getSubscribersByLabel(label);
+      setSubscribers(filteredSubscribers);
+    } catch (error) {
+      console.error('Error filtering subscribers:', error);
+      toast.error('Error filtering subscribers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Handle subscriber deletion
+  const handleDeleteSubscriber = async (subscriberId) => {
+    if (window.confirm('Are you sure you want to delete this subscriber?')) {
+      const success = await deleteSubscriber(subscriberId);
+      if (success) {
+        setSubscribers(subscribers.filter(sub => sub.id !== subscriberId));
+        toast.success('Subscriber deleted successfully');
+      }
+    }
+  };
+
+  // Handle broadcast send
+  const handleBroadcastSend = async () => {
+    if (!selectedPage || !broadcastMessage) {
+      toast.error('Please select a page and enter a message');
+      return;
+    }
+
+    const selectedPageData = pages.find(page => page.page_id === selectedPage);
+    if (!selectedPageData) {
+      toast.error('Selected page not found');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const success = await sendBroadcast({
+        lebel: selectedLabel,
+        page_id: selectedPage,
+        message: broadcastMessage
+      });
+
+      if (success) {
+        setBroadcastMessage("");
+        setSelectedLabel("");
+        toast.success(`Broadcast sent successfully via ${selectedPageData.page_name}`);
+      }
+    } catch (error) {
+      console.error('Error sending broadcast:', error);
+      toast.error('Error sending broadcast. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Subscriber table columns
+  const columns = [
+    {
+      accessorKey: "name",
+      header: "Name"
+    },
+    {
+      accessorKey: "label",
+      header: "Label"
+    },
+    {
+      accessorKey: "created_at",
+      header: "Subscribed Date",
+      cell: ({ row }) => new Date(row.original.created_at).toLocaleDateString()
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => handleDeleteSubscriber(row.original.id)}
+        >
+          <Trash2 className="h-4 w-4 text-red-500" />
+        </Button>
+      )
+    }
+  ];
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Facebook Messenger Broadcasts</h1>
+          <h1 className="text-3xl font-bold">Messenger Broadcasts</h1>
           <p className="text-muted-foreground">
-            Send targeted messages to your Facebook Messenger subscribers
+            Manage your subscribers and send targeted broadcasts
           </p>
         </div>
         
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+
           {isConnected ? (
-            <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+            <Badge variant="success" className="flex items-center gap-1">
               <CheckCircle className="w-3 h-3" />
-              <span>Connected to Facebook</span>
+              Connected to Facebook
             </Badge>
           ) : (
             <Button onClick={() => setIsConnected(true)}>
@@ -53,176 +217,186 @@ export function MessengerBroadcastPage() {
         </div>
       </div>
 
-      {!isConnected ? (
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Connect Your Facebook Page</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Subscribers {selectedPage && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  for {pages.find(p => p.page_id === selectedPage)?.page_name || 'Selected Page'}
+                </span>
+              )}
+            </CardTitle>
             <CardDescription>
-              Connect your Facebook Page to send broadcasts to your Messenger subscribers
+              Manage your messenger subscribers and their labels
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center py-6">
-            <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
-              <Facebook className="w-10 h-10" />
-            </div>
-            <p className="text-center max-w-md mb-6">
-              Facebook Messenger broadcasting allows you to send messages to people who have previously interacted with your Facebook Page through Messenger.
-            </p>
-            <Button size="lg" onClick={() => setIsConnected(true)}>
-              <Facebook className="w-4 h-4 mr-2" />
-              Connect Facebook Page
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="broadcast">
-              {recentBroadcast && (
-                <Alert className="mb-6 bg-green-50 border-green-200">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">Broadcast {recentBroadcast.status === "Scheduled" ? "Scheduled" : "Sent"} Successfully</AlertTitle>
-                  <AlertDescription className="text-green-700">
-                    {recentBroadcast.status === "Scheduled" 
-                      ? `Your broadcast has been scheduled for ${new Date(recentBroadcast.sentAt).toLocaleDateString()} at ${new Date(recentBroadcast.sentAt).toLocaleTimeString()}.` 
-                      : `Your broadcast has been sent to ${recentBroadcast.audienceSize} subscribers.`}
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <MessengerBroadcast onBroadcastSend={handleBroadcastSend} />
-            </TabsContent>
-            
-            <TabsContent value="analytics">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Total Subscribers
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{stats.totalSubscribers.toLocaleString()}</div>
-                      <p className="text-xs text-green-600 mt-1">
-                        +{stats.newSubscribers} in the last 30 days
-                      </p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Average Open Rate
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{stats.openRate}%</div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Industry avg: 22.1%
-                      </p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Average Click Rate
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{stats.clickRate}%</div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Industry avg: 9.6%
-                      </p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Message Delivery Rate
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{stats.reachRate}%</div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Successfully delivered messages
-                      </p>
-                    </CardContent>
-                  </Card>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1 flex items-center gap-4">
+                  <Select value={selectedPage} onValueChange={setSelectedPage}>
+                    <SelectTrigger className="w-[250px]">
+                      <SelectValue placeholder="Select Facebook page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pages.map(page => (
+                        <SelectItem 
+                          key={page.page_id} 
+                          value={page.page_id}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            {page.picture && (
+                              <img 
+                                src={page.picture} 
+                                alt={page.page_name} 
+                                className="w-5 h-5 rounded-full"
+                              />
+                            )}
+                            {page.page_name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={selectedLabel} onValueChange={handleLabelChange}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Filter by label" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Labels</SelectItem>
+                      {uniqueLabels.map(label => (
+                        <SelectItem key={label} value={label}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>Analytics Dashboard</AlertTitle>
-                  <AlertDescription>
-                    The full analytics dashboard is currently in development. This will include detailed performance metrics, subscriber growth trends, and engagement data.
-                  </AlertDescription>
-                </Alert>
+                <Badge variant="secondary">
+                  {subscribers.length} subscribers
+                </Badge>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="settings">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Messenger Broadcast Settings</CardTitle>
-                  <CardDescription>
-                    Configure your Facebook Messenger broadcast preferences
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Connected Account</h3>
-                    <div className="bg-muted p-4 rounded-lg flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                          <Facebook className="w-6 h-6" />
+
+              <DataTable 
+                columns={columns} 
+                data={subscribers}
+                loading={loading}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              New Broadcast
+            </CardTitle>
+            <CardDescription>
+              Send a new broadcast message to your subscribers
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleBroadcastSend(); }}>
+              <div className="space-y-2">
+                <Label htmlFor="page">Facebook Page</Label>
+                <Select value={selectedPage} onValueChange={setSelectedPage}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a page" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pages.map(page => (
+                      <SelectItem 
+                        key={page.page_id} 
+                        value={page.page_id}
+                        className="flex items-center gap-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          {page.picture && (
+                            <img 
+                              src={page.picture} 
+                              alt={page.page_name} 
+                              className="w-5 h-5 rounded-full"
+                            />
+                          )}
+                          {page.page_name}
                         </div>
-                        <div>
-                          <p className="font-medium">Business Page Name</p>
-                          <p className="text-sm text-muted-foreground">facebook.com/yourbusinesspage</p>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm">Disconnect</Button>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Message Settings</h3>
-                    <Alert className="bg-yellow-50 border-yellow-200">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <AlertTitle className="text-yellow-800">Facebook Messenger Policy Update</AlertTitle>
-                      <AlertDescription className="text-yellow-700">
-                        According to Facebook's Messenger Platform Policy, businesses can send standard messages to subscribers at any time, but promotional messages must be sent within 24 hours of the last user interaction.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Subscriber Management</h3>
-                    <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Your subscriber list is automatically maintained based on user interactions with your Facebook Page. Users who message your Page are automatically added as subscribers.
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Users can unsubscribe at any time by sending "stop" or by blocking your Page on Messenger.
-                      </p>
-                      <Button variant="outline">Export Subscriber List</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </>
-      )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedPage && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Broadcasting as {pages.find(p => p.page_id === selectedPage)?.page_name}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="label">Target Label</Label>
+                <Select value={selectedLabel} onValueChange={setSelectedLabel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select label" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueLabels.map(label => (
+                      <SelectItem key={label} value={label}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedLabel && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Targeting {subscribers.filter(s => s.label === selectedLabel).length} subscribers with label "{selectedLabel}"
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="message">Message</Label>
+                <Textarea
+                  id="message"
+                  placeholder="Enter your broadcast message..."
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  rows={4}
+                />
+                <p className="text-sm text-muted-foreground">
+                  {broadcastMessage.length} characters
+                </p>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading || !selectedPage || !broadcastMessage}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Broadcast
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Broadcast Guidelines</AlertTitle>
+        <AlertDescription>
+          According to Facebook's Messenger Platform Policy, businesses can send standard messages to subscribers at any time, but promotional messages must be sent within 24 hours of the last user interaction.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

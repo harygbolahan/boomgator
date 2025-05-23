@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Check, CreditCard, Loader, RefreshCw, AlertCircle } from "lucide-react";
 import { useBoom } from "@/contexts/BoomContext";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 // Account state reducer
 const accountReducer = (state, action) => {
@@ -92,7 +93,6 @@ const useAccountManagement = () => {
 
   useEffect(() => {
     if (accountData?.data) {
-      console.log('Account data loaded:', accountData);
       dispatch({ 
         type: 'SET_FORM_DATA', 
         payload: {
@@ -103,9 +103,8 @@ const useAccountManagement = () => {
         }
       });
       
-      // Update notification states
+      // Update notification states from the notification object
       if (accountData.notification) {
-        console.log('Notification settings loaded:', accountData.notification);
         dispatch({
           type: 'SET_EMAIL_NOTIFICATIONS',
           payload: {
@@ -214,27 +213,23 @@ const useAccountManagement = () => {
     
     // Validate all fields are filled
     if (!state.passwordData.currentPassword || !state.passwordData.newPassword || !state.passwordData.confirmPassword) {
-      console.log('Password validation failed: Empty fields');
       dispatch({ type: 'SET_PASSWORD_ERROR', payload: "Please fill in all password fields" });
       return;
     }
     
     // Validate password length
     if (state.passwordData.newPassword.length < 8) {
-      console.log('Password validation failed: Password too short');
       dispatch({ type: 'SET_PASSWORD_ERROR', payload: "New password must be at least 8 characters long" });
       return;
     }
     
     // Validate passwords match
     if (state.passwordData.newPassword !== state.passwordData.confirmPassword) {
-      console.log('Password validation failed: Passwords do not match');
       dispatch({ type: 'SET_PASSWORD_ERROR', payload: "Passwords do not match" });
       return;
     }
     
     dispatch({ type: 'SET_UPDATING_PASSWORD', payload: true });
-    console.log('Updating password...');
     try {
       // Call API to update password
       const payload = {
@@ -243,17 +238,13 @@ const useAccountManagement = () => {
           new: state.passwordData.newPassword
         }
       };
-      console.log('Password update payload:', payload);
       
       const response = await updateAccount(payload);
-      console.log('Password update response:', response);
-      
       toast.success("Password updated successfully");
       
       // Reset form
       dispatch({ type: 'RESET_PASSWORD_DATA' });
     } catch (error) {
-      console.error('Password update error:', error);
       dispatch({ type: 'SET_PASSWORD_ERROR', payload: error.message || "Failed to update password" });
       toast.error(error.message || "Failed to update password");
     } finally {
@@ -312,6 +303,8 @@ export function AccountPage() {
     { id: "security", name: "Security" },
     { id: "billing", name: "Billing" }
   ];
+
+  const navigate = useNavigate();
   
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -327,10 +320,7 @@ export function AccountPage() {
           variant="outline" 
           size="sm" 
           className="mt-2 md:mt-0 flex items-center gap-2"
-          onClick={() => {
-            console.log('Manual refresh requested');
-            getAccount();
-          }}
+          onClick={() => getAccount()}
           disabled={loadingAccount}
         >
           {loadingAccount ? (
@@ -479,8 +469,8 @@ export function AccountPage() {
                         <Check size={16} className="text-blue-700" />
                       </div>
                       <div>
-                        <span className="font-medium">KYC Status: </span>
-                        <span>{accountData?.data?.kyc || "Not Verified"}</span>
+                        <span className="font-medium">Email Status: </span>
+                        <span>{accountData?.data?.email_verified_at ? "Verified" : "Not Verified"}</span>
                       </div>
                     </div>
                     
@@ -505,7 +495,7 @@ export function AccountPage() {
                   <div className="flex items-center justify-between border-b pb-3">
                     <div>
                       <p className="text-sm font-medium">Wallet Balance</p>
-                      <p className="text-2xl font-bold">${accountData?.wallet?.toFixed(2) || "0.00"}</p>
+                      <p className="text-2xl font-bold">₦{accountData?.wallet?.toFixed(2) || accountData?.data?.wallet?.toFixed(2) || "0.00"}</p>
                     </div>
                     <Button variant="outline" size="sm" className="flex items-center gap-1">
                       <CreditCard size={14} /> Manage Billing
@@ -515,9 +505,9 @@ export function AccountPage() {
                   <div className="flex items-center justify-between border-b pb-3">
                     <div>
                       <p className="text-sm font-medium">Subscription</p>
-                      <p className="text-sm">{accountData?.data?.subscription || "Free"}</p>
+                      <p className="text-sm">{accountData?.data?.package || "Free"}</p>
                     </div>
-                    <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-purple-600">
+                    <Button size="sm" onClick={() => navigate('/subscription')} className="bg-gradient-to-r from-indigo-600 to-purple-600">
                       Upgrade Plan
                     </Button>
                   </div>
@@ -670,21 +660,7 @@ export function AccountPage() {
                 </div>
               </div>
               
-              <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Two-Factor Authentication</h3>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">2FA Status</p>
-                    <p className="text-xs text-muted-foreground">
-                      Enhance your account security with two-factor authentication
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Setup 2FA
-                  </Button>
-                </div>
-              </div>
+              
             </div>
           )}
           
@@ -697,62 +673,32 @@ export function AccountPage() {
               className="space-y-4 sm:space-y-6"
             >
               <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Payment Methods</h3>
-                
-                <div className="divide-y">
-                  <div className="py-3 flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="bg-blue-100 rounded-lg p-2 mr-3">
-                        <CreditCard className="h-5 w-5 text-blue-700" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Visa ending in 4242</p>
-                        <p className="text-xs text-muted-foreground">Expires 12/2024</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-xs mr-3 bg-accent-foreground/10 py-0.5 px-2 rounded-full">Default</span>
-                      <Button variant="outline" size="sm">
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <Button variant="outline" size="sm">
-                    Add Payment Method
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Billing History</h3>
+                <h3 className="text-base sm:text-lg font-medium mb-4 sm:mb-6">Subscription Details</h3>
                 
                 <div className="divide-y">
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium">Premium Plan</p>
-                      <p className="text-xs text-muted-foreground">May 3, 2023</p>
+                      <p className="text-sm font-medium">Current Plan</p>
+                      <p className="text-sm">{accountData?.data?.package || "Free"}</p>
                     </div>
-                    <div className="flex items-center">
-                      <span className="text-sm mr-3">$29.99</span>
-                      <Button variant="outline" size="sm">View</Button>
-                    </div>
+                    <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-purple-600">
+                      Upgrade
+                    </Button>
                   </div>
                   
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium">Premium Plan</p>
-                      <p className="text-xs text-muted-foreground">April 3, 2023</p>
+                      <p className="text-sm font-medium">Wallet Balance</p>
+                      <p className="text-sm">₦{accountData?.wallet?.toFixed(2) || accountData?.data?.wallet?.toFixed(2) || "0.00"}</p>
                     </div>
-                    <div className="flex items-center">
-                      <span className="text-sm mr-3">$29.99</span>
-                      <Button variant="outline" size="sm">View</Button>
-                    </div>
+                    <Button variant="outline" size="sm">
+                      Fund Wallet
+                    </Button>
                   </div>
                 </div>
               </div>
+              
+              
             </div>
           )}
         </>

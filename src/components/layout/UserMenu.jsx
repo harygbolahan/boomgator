@@ -8,7 +8,8 @@ import {
   LogOutIcon, 
   SettingsIcon, 
   BellIcon, 
-  CreditCardIcon 
+  CreditCardIcon,
+  PackageIcon
 } from "lucide-react"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { cn } from "@/lib/utils"
@@ -22,16 +23,16 @@ export function UserMenu() {
     try {
       // Call the auth context logout function
       logout();
-      console.log('Logout successful, redirecting to login page');
       
-      // Delay navigation slightly to ensure logout completes
-      setTimeout(() => {
-        // Use replace instead of navigate to prevent going back to dashboard
-        navigate("/auth/login", { replace: true });
-      }, 100);
+      // Clear localStorage
+      localStorage.clear();
+      
+      // Use replace instead of navigate to prevent going back to dashboard
+      navigate("/auth/login", { replace: true });
     } catch (error) {
       console.error('Error during logout:', error);
       // Force navigation to login page even if there's an error
+      localStorage.clear();
       navigate("/auth/login", { replace: true });
     }
   };
@@ -81,7 +82,7 @@ export function UserMenu() {
                 {user?.wallet !== undefined && (
                   <div className="mt-1">
                     <span className="text-xs text-white font-medium">
-                      Balance: ${user.wallet.toFixed(2)}
+                      Balance: ₦{user.wallet.toFixed(2)}
                     </span>
                   </div>
                 )}
@@ -112,55 +113,23 @@ export function UserMenu() {
               Your Profile
             </a>
             
-            <a
-              href="/account"
-              onClick={(e) => handleNavigate('/account', e)}
-              className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-              tabIndex={0}
-              aria-label="Settings"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleNavigate('/account', e);
-                }
-              }}
-            >
-              <SettingsIcon className="mr-3 h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Settings
-            </a>
+            
             
             <a
-              href="/notifications"
-              onClick={(e) => handleNavigate('/notifications', e)}
+              href="/subscription"
+              onClick={(e) => handleNavigate('/subscription', e)}
               className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               tabIndex={0}
-              aria-label="Notifications"
+              aria-label="Subscriptions"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleNavigate('/notifications', e);
+                  handleNavigate('/subscription', e);
                 }
               }}
             >
-              <BellIcon className="mr-3 h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Notifications
-            </a>
-            
-            <a
-              href="/payment-plans"
-              onClick={(e) => handleNavigate('/payment-plans', e)}
-              className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-              tabIndex={0}
-              aria-label="Billing"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleNavigate('/payment-plans', e);
-                }
-              }}
-            >
-              <CreditCardIcon className="mr-3 h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Billing
+              <PackageIcon className="mr-3 h-4 w-4 text-blue-600 dark:text-blue-400" />
+              Subscriptions
             </a>
             
             <div className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">

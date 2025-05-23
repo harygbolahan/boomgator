@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/contexts/AuthContext';
 import { FileText } from "lucide-react";
+import { withSubscription } from '@/components/ui/withSubscription';
 
 // UI Components
 import {
@@ -49,7 +50,7 @@ const statusIcons = {
   Cancelled: <X className="w-4 h-4 mr-1" />,
 };
 
-export const ContentSchedulerPage = () => {
+export const ContentSchedulerPageBase = () => {
   const { token } = useAuth();
   const { 
     getScheduledPosts, 
@@ -1077,5 +1078,8 @@ export const ContentSchedulerPage = () => {
     </div>
   );
 };
+
+// Wrap the component with subscription check for SCHEDULE_POST service
+export const ContentSchedulerPage = withSubscription(ContentSchedulerPageBase, 'SCHEDULE_POST');
 
 export default ContentSchedulerPage; 

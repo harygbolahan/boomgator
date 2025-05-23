@@ -57,7 +57,7 @@ api.interceptors.response.use(
       return Promise.reject(new Error('Session expired or invalid. Redirecting to login.'));
     }
     
-    const errorMessage = error.response?.data?.message || error.message || 'Something went wrong';
+    const errorMessage = error?.response?.data?.message || error?.response?.data?.error || 'Something went wrong';
     return Promise.reject(new Error(errorMessage));
   }
 );
@@ -140,7 +140,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: errorMsg };
       }
     } catch (error) {
-      const errorMsg = error.message || 'Failed to login. Please check your credentials.';
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || 'Failed to login. Please check your credentials.';
       setError(errorMsg);
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
@@ -170,9 +170,9 @@ export const AuthProvider = ({ children }) => {
         throw new Error(response.message || 'Registration failed');
       }
     } catch (error) {
-      setError(error.message || 'Failed to register. Please try again.');
-      toast.error(error.message || 'Registration failed');
-      return { success: false, error: error.message };
+      setError(error?.response?.data?.message || error?.response?.data?.error || 'Failed to register. Please try again.');
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || 'Registration failed');
+      return { success: false, error: error?.response?.data?.message || error?.response?.data?.error || 'Registration failed' };
     } finally {
       setLoading(false);
     }
@@ -193,7 +193,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(response.message || 'Failed to process forgot password request');
       }
     } catch (error) {
-      const errorMsg = error.message || 'Failed to send password reset link';
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || 'Failed to send password reset link';
       setError(errorMsg);
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
@@ -217,7 +217,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(response.message || 'Failed to reset password');
       }
     } catch (error) {
-      const errorMsg = error.message || 'Failed to reset password';
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || 'Failed to reset password';
       setError(errorMsg);
       toast.error(errorMsg);
       return { success: false, error: errorMsg };

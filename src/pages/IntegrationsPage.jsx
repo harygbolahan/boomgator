@@ -130,20 +130,6 @@ export function IntegrationsPage() {
       icon: "📸",
       bgColor: "bg-pink-100 text-pink-800",
       description: "Connect to your Instagram business account to schedule posts and analyze performance."
-    },
-    {
-      id: "twitter",
-      name: "Twitter",
-      icon: "𝕏",
-      bgColor: "bg-gray-100 text-gray-800",
-      description: "Connect to your Twitter account to schedule tweets and analyze engagement."
-    },
-    {
-      id: "linkedin",
-      name: "LinkedIn",
-      icon: "in",
-      bgColor: "bg-blue-100 text-blue-800",
-      description: "Connect to your LinkedIn profile or page to schedule posts and track analytics."
     }
   ];
 
@@ -298,15 +284,15 @@ export function IntegrationsPage() {
                       size="sm"
                       onClick={() => handleRefreshAccount(platform.id)}
                     >
-                      Refresh
+                      Refresh 
                     </Button>
-                    <Button 
+                    {/* <Button 
                       variant="ghost" 
                       size="sm"
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
                       Disconnect
-                    </Button>
+                    </Button> */}
                   </CardFooter>
                 </Card>
               ))}

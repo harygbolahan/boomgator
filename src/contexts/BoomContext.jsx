@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-toastify';
@@ -57,6 +57,23 @@ export const BoomProvider = ({ children }) => {
   const [loadingServices, setLoadingServices] = useState(false);
   const [servicesError, setServicesError] = useState(null);
 
+  // Chat data
+  const [chats, setChats] = useState([]);
+  const [currentChat, setCurrentChat] = useState([]);
+  const [loadingChats, setLoadingChats] = useState(false);
+  const [loadingCurrentChat, setLoadingCurrentChat] = useState(false);
+  const [chatsError, setChatsError] = useState(null);
+  const [currentChatError, setCurrentChatError] = useState(null);
+  
+  // Subscription data
+  const [availablePackages, setAvailablePackages] = useState(null);
+  const [currentPackage, setCurrentPackage] = useState(null);
+  const [loadingPackages, setLoadingPackages] = useState(false);
+  const [loadingCurrentPackage, setLoadingCurrentPackage] = useState(false);
+  const [packageError, setPackageError] = useState(null);
+  const [subscribingPackage, setSubscribingPackage] = useState(false);
+  const [subscribeError, setSubscribeError] = useState(null);
+
   // API instance with auth token
   const api = useCallback(
     (customConfig = {}) => {
@@ -112,7 +129,7 @@ export const BoomProvider = ({ children }) => {
       setAccountData(response.data);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading account data";
       setAccountError(errorMsg);
       toast.error(`Error loading account data: ${errorMsg}`);
       return null;
@@ -133,7 +150,7 @@ export const BoomProvider = ({ children }) => {
       toast.success('Account updated successfully');
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error updating account";
       setAccountError(errorMsg);
       toast.error(`Error updating account: ${errorMsg}`);
       return null;
@@ -158,7 +175,7 @@ export const BoomProvider = ({ children }) => {
       setWalletHistory(response.data.wallet_history || []);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading wallet data";
       setWalletError(errorMsg);
       toast.error(`Error loading wallet data: ${errorMsg}`);
       return null;
@@ -182,7 +199,7 @@ export const BoomProvider = ({ children }) => {
       setHomeData(response.data);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading dashboard data";
       setHomeError(errorMsg);
       toast.error(`Error loading dashboard data: ${errorMsg}`);
       return null;
@@ -206,7 +223,7 @@ export const BoomProvider = ({ children }) => {
       setAutomations(response.data);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading automations";
       setAutomationsError(errorMsg);
       toast.error(`Error loading automations: ${errorMsg}`);
       return [];
@@ -234,7 +251,7 @@ export const BoomProvider = ({ children }) => {
       toast.success('Automation created successfully');
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error creating automation";
       setAutomationsError(errorMsg);
       toast.error(`Error creating automation: ${errorMsg}`);
       return null;
@@ -262,7 +279,7 @@ export const BoomProvider = ({ children }) => {
       toast.success('Automation updated successfully');
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error updating automation";
       setAutomationsError(errorMsg);
       toast.error(`Error updating automation: ${errorMsg}`);
       return null;
@@ -283,7 +300,7 @@ export const BoomProvider = ({ children }) => {
       toast.success('Automation deleted successfully');
       return true;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error deleting automation";
       setAutomationsError(errorMsg);
       toast.error(`Error deleting automation: ${errorMsg}`);
       return false;
@@ -307,7 +324,7 @@ export const BoomProvider = ({ children }) => {
       setPlatforms(response.data);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading platforms";
       setPlatformsError(errorMsg);
       toast.error(`Error loading platforms: ${errorMsg}`);
       return [];
@@ -327,7 +344,7 @@ export const BoomProvider = ({ children }) => {
       setPages(response.data);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading pages";
       setPagesError(errorMsg);
       toast.error(`Error loading pages: ${errorMsg}`);
       return [];
@@ -343,7 +360,7 @@ export const BoomProvider = ({ children }) => {
     if (!isAuthenticated) return null;
     
     try {
-      const response = await api().post('/link/social/login', {
+      const response = await api().post('https://ai.loomsuite.com/api/link/social/login', {
         type: platformType
       });
       
@@ -353,7 +370,7 @@ export const BoomProvider = ({ children }) => {
         throw new Error("Failed to get platform authorization link");
       }
     } catch (error) {
-      toast.error(`Error getting platform link: ${error.message}`);
+      toast.error(`Error getting platform link: ${error?.response?.data?.message || error?.response?.data?.error || "Failed to get platform link"}`);
       return null;
     }
   }, [isAuthenticated, api]);
@@ -371,7 +388,7 @@ export const BoomProvider = ({ children }) => {
         throw new Error("Failed to fetch page posts");
       }
     } catch (error) {
-      toast.error(`Error loading page posts: ${error.message}`);
+      toast.error(`Error loading page posts: ${error?.response?.data?.message || error?.response?.data?.error || "Failed to load page posts"}`);
       return [];
     }
   }, [isAuthenticated, api]);
@@ -413,7 +430,7 @@ export const BoomProvider = ({ children }) => {
       
       return await response.json();
     } catch (error) {
-      toast.error(`Error fetching platform: ${error.message}`);
+      toast.error(`Error fetching platform: ${error?.response?.data?.message || error?.response?.data?.error || "Failed to fetch platform"}`);
       return null;
     }
   }, [isAuthenticated, token]);
@@ -426,7 +443,7 @@ export const BoomProvider = ({ children }) => {
       const response = await api().get('/platforms/pages/all-posts');
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading all page posts";
       toast.error(`Error loading all page posts: ${errorMsg}`);
       console.error('Error fetching all page posts:', error);
       return [];
@@ -448,7 +465,7 @@ export const BoomProvider = ({ children }) => {
       setScheduledPosts(response.data);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading scheduled posts";
       setScheduledPostsError(errorMsg);
       toast.error(`Error loading scheduled posts: ${errorMsg}`);
       return [];
@@ -467,7 +484,7 @@ export const BoomProvider = ({ children }) => {
       const response = await api().post('/schedule-post', { post_id: postId });
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading post details";
       setScheduledPostsError(errorMsg);
       toast.error(`Error loading post details: ${errorMsg}`);
       return null;
@@ -505,7 +522,7 @@ export const BoomProvider = ({ children }) => {
       toast.success('Post scheduled successfully');
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error scheduling post";
       setScheduledPostsError(errorMsg);
       toast.error(`Error scheduling post: ${errorMsg}`);
       return null;
@@ -526,7 +543,7 @@ export const BoomProvider = ({ children }) => {
       toast.success('Post deleted successfully');
       return true;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error deleting post";
       setScheduledPostsError(errorMsg);
       toast.error(`Error deleting post: ${errorMsg}`);
       return false;
@@ -553,7 +570,7 @@ export const BoomProvider = ({ children }) => {
       setCommentReplies(response.data);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading comment replies";
       setCommentRepliesError(errorMsg);
       toast.error(`Error loading comment replies: ${errorMsg}`);
       return [];
@@ -572,7 +589,7 @@ export const BoomProvider = ({ children }) => {
       const response = await api().post('/comment-replies/comment', { comment_id: commentId });
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading comment replies by ID";
       setCommentRepliesError(errorMsg);
       toast.error(`Error loading comment replies by ID: ${errorMsg}`);
       return [];
@@ -621,10 +638,10 @@ export const BoomProvider = ({ children }) => {
       } else if (error.request) {
         console.error('Error request - no response received:', error.request);
       } else {
-        console.error('Error message:', error.message);
+        console.error('Error details:', error);
       }
       
-      const errorMsg = error.response?.data?.message || error.message || 'Unknown error occurred';
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Unknown error occurred when adding comment reply";
       setCommentRepliesError(errorMsg);
       toast.error(`Error adding comment reply: ${errorMsg}`);
       throw error;
@@ -647,7 +664,7 @@ export const BoomProvider = ({ children }) => {
       setAutoReplyServices(response.data);
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading auto reply services";
       setServicesError(errorMsg);
       toast.error(`Error loading auto reply services: ${errorMsg}`);
       return [];
@@ -656,11 +673,294 @@ export const BoomProvider = ({ children }) => {
     }
   }, [isAuthenticated, api]);
 
+  // =====================
+  // SUBSCRIPTION FUNCTIONS
+  // =====================
+  
+  // Get all available subscription packages
+  const getAllPackages = useCallback(async () => {
+    if (!isAuthenticated) return null;
+    
+    setLoadingPackages(true);
+    setPackageError(null);
+    
+    try {
+      const response = await api().get('/subscriptions');
+      setAvailablePackages(response.data.package);
+      return response.data.package;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading subscription packages";
+      setPackageError(errorMsg);
+      toast.error(`Error loading subscription packages: ${errorMsg}`);
+      return null;
+    } finally {
+      setLoadingPackages(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  // Get user's current package
+  const getUserPackage = useCallback(async () => {
+    if (!isAuthenticated) return null;
+    
+    setLoadingCurrentPackage(true);
+    setPackageError(null);
+    
+    try {
+      const response = await api().get('/subscriptions/me');
+      setCurrentPackage(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading your subscription package";
+      setPackageError(errorMsg);
+      toast.error(`Error loading your subscription package: ${errorMsg}`);
+      return null;
+    } finally {
+      setLoadingCurrentPackage(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  // Subscribe to a new package
+  const subscribeToPackage = useCallback(async (packageName) => {
+    if (!isAuthenticated) return null;
+    
+    setSubscribingPackage(true);
+    setSubscribeError(null);
+    
+    try {
+      const response = await api().post('/subscribe/package', {
+        package: packageName.toLowerCase() // Convert to lowercase to ensure consistency
+      });
+      
+      // Update the current package
+      setCurrentPackage(response.data);
+      
+      toast.success(`Successfully subscribed to ${packageName.toUpperCase()} package`);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || `Error subscribing to ${packageName} package`;
+      setSubscribeError(errorMsg);
+      toast.error(`Error subscribing to package: ${errorMsg}`);
+      return null;
+    } finally {
+      setSubscribingPackage(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  // Check if user has subscription for a specific service
+  const checkServiceSubscription = useCallback((serviceId, serviceName = null) => {
+    if (!currentPackage || !currentPackage.service || !Array.isArray(currentPackage.service)) {
+      return {
+        subscribed: false,
+        limit: {
+          daily: 0,
+          weekly: 0,
+          monthly: 0
+        },
+        service: serviceName || 'Unknown Service'
+      };
+    }
+    
+    // Find the service by ID or name
+    const service = currentPackage.service.find(
+      s => s.id === serviceId || (serviceName && s.service === serviceName)
+    );
+    
+    if (!service) {
+      return {
+        subscribed: false,
+        limit: {
+          daily: 0,
+          weekly: 0,
+          monthly: 0
+        },
+        service: serviceName || 'Unknown Service'
+      };
+    }
+    
+    return {
+      subscribed: true,
+      limit: {
+        daily: service.limit_daily || 0,
+        weekly: service.limit_weekly || 0,
+        monthly: service.limit_monthly || 0
+      },
+      service: service.service
+    };
+  }, [currentPackage]);
 
+  // =====================
+  // CHAT FUNCTIONS
+  // =====================
+  
+  const getAllChats = useCallback(async (pageId) => {
+    if (!isAuthenticated || !pageId) return [];
+    
+    setLoadingChats(true);
+    setChatsError(null);
+    
+    try {
+      const response = await api().post('/chats', { page_id: pageId });
+      setChats(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading chats";
+      setChatsError(errorMsg);
+      toast.error(`Error loading chats: ${errorMsg}`);
+      return [];
+    } finally {
+      setLoadingChats(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  const openChat = useCallback(async (pageId, threadId) => {
+    if (!isAuthenticated || !pageId || !threadId) return [];
+    
+    setLoadingCurrentChat(true);
+    setCurrentChatError(null);
+    
+    try {
+      const response = await api().post('/chats/open', { 
+        page_id: pageId,
+        thread_id: threadId
+      });
+      setCurrentChat(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error opening chat";
+      setCurrentChatError(errorMsg);
+      toast.error(`Error opening chat: ${errorMsg}`);
+      return [];
+    } finally {
+      setLoadingCurrentChat(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  const replyToChat = useCallback(async (pageId, recipientId, message) => {
+    if (!isAuthenticated || !pageId || !recipientId || !message) return null;
+    
+    setLoadingCurrentChat(true);
+    setCurrentChatError(null);
+    
+    try {
+      const response = await api().post('/chats/reply', {
+        page_id: pageId,
+        recipient_id: recipientId,
+        message: message
+      });
+      
+      if (response.data.success) {
+        toast.success('Message sent successfully');
+        return response.data;
+      } else {
+        throw new Error("Failed to send message");
+      }
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error sending message";
+      setCurrentChatError(errorMsg);
+      toast.error(`Error sending message: ${errorMsg}`);
+      return null;
+    } finally {
+      setLoadingCurrentChat(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  // =====================
+  // CONTENT GENERATION FUNCTIONS
+  // =====================
+
+  const generateContent = useCallback(async (contentParams) => {
+    if (!isAuthenticated) return null;
+    
+    try {
+      console.log('Generating content with params:', contentParams);
+      
+      const response = await api().post('/generate-content', {
+        keyword: contentParams.keyword,
+        audience: contentParams.audience || '',
+        tone: contentParams.tone || 'Professional',
+        voice_style: contentParams.voice_style || 'Straightforward',
+        length: contentParams.length || '150 words',
+        cta: contentParams.cta || ''
+      });
+      
+      console.log('Content generation API response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error generating content:', error);
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error generating content";
+      toast.error(`Error generating content: ${errorMsg}`);
+      return null;
+    }
+  }, [isAuthenticated, api]);
+  
+  // =====================
+  // SUBSCRIBER FUNCTIONS
+  // =====================
+  
+  const getSubscribers = useCallback(async () => {
+    if (!isAuthenticated) return [];
+    
+    try {
+      const response = await api().get('/subscribers');
+      return response.data.data || [];
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading subscribers";
+      toast.error(`Error loading subscribers: ${errorMsg}`);
+      return [];
+    }
+  }, [isAuthenticated, api]);
+
+  const getSubscribersByLabel = useCallback(async (keyword) => {
+    if (!isAuthenticated || !keyword) return [];
+    
+    try {
+      const response = await api().post('/subscribers/lebel', { keyword });
+      return response.data.data || [];
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading subscribers by label";
+      toast.error(`Error loading subscribers by label: ${errorMsg}`);
+      return [];
+    }
+  }, [isAuthenticated, api]);
+
+  const deleteSubscriber = useCallback(async (subscriberId) => {
+    if (!isAuthenticated || !subscriberId) return false;
+    
+    try {
+      const response = await api().post('/subscribers/delete', { id: subscriberId });
+      if (response.data.status === 'success') {
+        toast.success('Subscriber deleted successfully');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error deleting subscriber";
+      toast.error(`Error deleting subscriber: ${errorMsg}`);
+      return false;
+    }
+  }, [isAuthenticated, api]);
+
+  const sendBroadcast = useCallback(async (broadcastData) => {
+    if (!isAuthenticated || !broadcastData) return false;
+    
+    try {
+      const response = await api().post('/subscribers/broadcasts', broadcastData);
+      if (response.data.status === 'success') {
+        return true;
+      }
+      return false;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error sending broadcast";
+      toast.error(`Error sending broadcast: ${errorMsg}`);
+      return false;
+    }
+  }, [isAuthenticated, api]);
   
   // General loading state
   const isLoading = loadingAccount || loadingWallet || loadingHome || loadingAutomations || 
-                    loadingScheduledPosts || loadingCommentReplies || loadingPlatforms || loadingPages || loadingServices;
+                    loadingScheduledPosts || loadingCommentReplies || loadingPlatforms || 
+                    loadingPages || loadingServices || loadingChats || loadingCurrentChat ||
+                    loadingPackages || loadingCurrentPackage || subscribingPackage;
   
   // Refresh all data
   const refreshAll = useCallback(() => {
@@ -669,12 +969,26 @@ export const BoomProvider = ({ children }) => {
     getHomeData();
     getAllAutomations();
     getScheduledPosts();
-    getAllCommentReplies();
+    getAllPackages();
+    getUserPackage();
     getPlatforms();
     getPages();
     getAutoReplyServices();
-  }, [getAccount, getWallet, getHomeData, getAllAutomations, getScheduledPosts, getAllCommentReplies, getPlatforms, getPages, getAutoReplyServices]);
-    const value = {
+    // Note: 
+    // - Not calling getAllChats here as it requires pageId parameter
+    // - Not calling getAllCommentReplies here as it requires post_id parameter
+  }, [getAccount, getWallet, getHomeData, getAllAutomations, getScheduledPosts, 
+      getPlatforms, getPages, getAutoReplyServices, 
+      getAllPackages, getUserPackage]);
+    
+  // Initialize the data when auth token changes
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      refreshAll();
+    }
+  }, [isAuthenticated, token, refreshAll]);
+
+  const value = {
     // Auto Reply Services
     autoReplyServices,
     loadingServices,
@@ -748,9 +1062,42 @@ export const BoomProvider = ({ children }) => {
     servicesError,
     getAutoReplyServices,
     
+    // Subscriptions
+    availablePackages,
+    currentPackage,
+    loadingPackages,
+    loadingCurrentPackage,
+    packageError,
+    subscribingPackage,
+    subscribeError,
+    getAllPackages,
+    getUserPackage,
+    subscribeToPackage,
+    checkServiceSubscription,
+    
+    // Chats
+    chats,
+    currentChat,
+    loadingChats,
+    loadingCurrentChat,
+    chatsError,
+    currentChatError,
+    getAllChats,
+    openChat,
+    replyToChat,
+    
     // General
     isLoading,
     refreshAll,
+    
+    // Content Generation
+    generateContent,
+    
+    // Subscribers
+    getSubscribers,
+    getSubscribersByLabel,
+    deleteSubscriber,
+    sendBroadcast,
   };
   
   return <BoomContext.Provider value={value}>{children}</BoomContext.Provider>;

@@ -10,9 +10,26 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Linkedin, Edit, Copy, Bookmark, Sparkles, Clock, Check, AlertTriangle, Send } from "lucide-react";
+import { 
+  Linkedin, 
+  Facebook, 
+  Instagram, 
+  Twitter, 
+  Globe, 
+  Edit, 
+  Copy, 
+  Bookmark, 
+  Sparkles, 
+  Clock, 
+  Check, 
+  AlertTriangle, 
+  Send,
+  RefreshCw
+} from "lucide-react";
+import { useBoom } from "@/contexts/BoomContext";
 
 export function AIContentCreatorPage() {
+  const { generateContent } = useBoom();
   const [activeTab, setActiveTab] = useState("post");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState(null);
@@ -21,11 +38,13 @@ export function AIContentCreatorPage() {
   
   // Form states
   const [topic, setTopic] = useState("");
+  const [platform, setPlatform] = useState("linkedin");
   const [industry, setIndustry] = useState("");
   const [tone, setTone] = useState("professional");
-  const [contentLength, setContentLength] = useState(2); // 1-4 scale
+  const [voiceStyle, setVoiceStyle] = useState("straightforward");
   const [includeHashtags, setIncludeHashtags] = useState(true);
   const [includeCTA, setIncludeCTA] = useState(true);
+  const [customCTA, setCustomCTA] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   
   // Saved content collection
@@ -33,7 +52,7 @@ export function AIContentCreatorPage() {
     {
       id: 1,
       topic: "Remote Work Benefits",
-      platform: "LinkedIn",
+      platform: "linkedin",
       content: "Remote work isn't just a trend—it's a transformation in how we approach productivity and work-life balance. After two years of building a remote-first culture at our company, we've seen a 34% increase in employee satisfaction and a 22% boost in overall productivity. The key? Trust and clear communication. What's your experience with remote work? Has it changed your perspective on workplace flexibility? #RemoteWork #FutureOfWork #WorkLifeBalance",
       createdAt: new Date("2023-06-15").toISOString(),
       status: "draft"
@@ -41,24 +60,42 @@ export function AIContentCreatorPage() {
     {
       id: 2,
       topic: "AI in Marketing",
-      platform: "LinkedIn",
+      platform: "facebook",
       content: "Marketing teams using AI tools are seeing 40% faster campaign development and 37% better ROI according to our latest industry report. But the most successful implementations are those that augment human creativity, not replace it. At the intersection of AI efficiency and human insight is where true marketing innovation happens. Curious how your team can implement this approach? Let's connect. #AIMarketing #MarketingInnovation #DigitalTransformation",
       createdAt: new Date("2023-06-10").toISOString(),
       status: "published"
     }
   ]);
   
-  const contentLengthLabels = ["Short", "Medium", "Long", "Comprehensive"];
+  const platformOptions = [
+    { id: "linkedin", name: "LinkedIn", icon: <Linkedin className="h-4 w-4" /> },
+    { id: "facebook", name: "Facebook", icon: <Facebook className="h-4 w-4" /> },
+    { id: "instagram", name: "Instagram", icon: <Instagram className="h-4 w-4" /> },
+    { id: "twitter", name: "Twitter", icon: <Twitter className="h-4 w-4" /> },
+    { id: "blog", name: "Blog", icon: <Globe className="h-4 w-4" /> }
+  ];
+  
   const industryOptions = [
     "Technology", "Finance", "Healthcare", "Marketing", "Education", 
     "E-commerce", "Real Estate", "Manufacturing", "Consulting", "Other"
   ];
+  
   const toneOptions = [
     "Professional", "Conversational", "Enthusiastic", "Informative", 
     "Persuasive", "Inspirational", "Educational", "Authoritative"
   ];
   
-  const handleGenerateContent = () => {
+  const voiceStyleOptions = [
+    "Straightforward", "Friendly", "Humorous", "Technical", 
+    "Storytelling", "Formal", "Casual", "Analytical"
+  ];
+  
+  const getPlatformIcon = (platformId) => {
+    const platform = platformOptions.find(p => p.id === platformId);
+    return platform ? platform.icon : <Globe className="h-4 w-4" />;
+  };
+  
+  const handleGenerateContent = async () => {
     if (!topic) {
       setError("Please provide a content topic");
       return;
@@ -67,63 +104,50 @@ export function AIContentCreatorPage() {
     setError("");
     setIsGenerating(true);
     
-    // Mock AI generation with a timeout
-    setTimeout(() => {
-      // Create a mock AI response based on input parameters
-      const contentSizeMultiplier = contentLength;
-      const hashtagSection = includeHashtags ? generateMockHashtags(topic, industry) : "";
-      const ctaSection = includeCTA ? generateMockCTA(industry) : "";
+    try {
+      // Prepare the content parameters
+      const contentParams = {
+        keyword: topic,
+        audience: targetAudience || (industry ? `professionals in the ${industry} industry` : "professionals"),
+        tone: tone || "Professional",
+        voice_style: voiceStyle || "Straightforward",
+        cta: includeCTA ? (customCTA || generateDefaultCTA(industry)) : ""
+      };
       
-      const contentBody = generateMockContent(topic, industry, tone, contentSizeMultiplier);
+      // Call the API
+      const response = await generateContent(contentParams);
       
+      if (!response) {
+        throw new Error("Failed to generate content");
+      }
+      
+      // Process the response to include hashtags if needed
+      let finalContent = response.content || "";
+      
+      if (includeHashtags) {
+        const hashtags = generateHashtags(topic, industry);
+        finalContent = `${finalContent}\n\n${hashtags}`;
+      }
+      
+      // Set the generated content
       setGeneratedContent({
         topic,
-        platform: "LinkedIn",
-        content: `${contentBody}\n\n${ctaSection}\n\n${hashtagSection}`,
+        platform,
+        content: finalContent,
         createdAt: new Date().toISOString(),
-        status: "draft"
+        status: "draft",
+        rawResponse: response
       });
       
+    } catch (err) {
+      console.error("Error generating content:", err);
+      setError(err.message || "Failed to generate content. Please try again.");
+    } finally {
       setIsGenerating(false);
-    }, 2500);
-  };
-  
-  const generateMockContent = (topic, industry, tone, size) => {
-    // This would be replaced with actual AI generation in a real app
-    const sentences = [
-      `I've been exploring ${topic} extensively in the ${industry || "industry"} lately.`,
-      `The impact of ${topic} on business outcomes cannot be overstated.`,
-      `When implemented correctly, ${topic} can transform how we approach challenges.`,
-      `Research shows that organizations adopting ${topic} see significant improvements in efficiency.`,
-      `The evolution of ${topic} over the past few years has been remarkable.`,
-      `Industry leaders are leveraging ${topic} to stay ahead of the competition.`,
-      `What's your experience with ${topic}? I'd love to hear your thoughts.`,
-      `The intersection of ${topic} and technology presents unique opportunities.`,
-      `One of the key insights I've gained from working with ${topic} is the importance of a strategic approach.`,
-      `Successful implementation of ${topic} requires both technical expertise and business acumen.`,
-      `I've found that teams who embrace ${topic} tend to innovate more rapidly.`,
-      `The ROI of investing in ${topic} goes beyond immediate financial returns.`
-    ];
-    
-    // Select a number of sentences based on content length
-    const sentenceCount = 3 + size * 2;
-    let selectedSentences = [];
-    
-    // Ensure we don't try to select more sentences than available
-    const maxSentences = Math.min(sentenceCount, sentences.length);
-    
-    // Randomly select sentences without repetition
-    while (selectedSentences.length < maxSentences) {
-      const randomIndex = Math.floor(Math.random() * sentences.length);
-      if (!selectedSentences.includes(sentences[randomIndex])) {
-        selectedSentences.push(sentences[randomIndex]);
-      }
     }
-    
-    return selectedSentences.join(" ");
   };
   
-  const generateMockHashtags = (topic, industry) => {
+  const generateHashtags = (topic, industry) => {
     const topicWords = topic.split(" ");
     const hashtags = topicWords.map(word => `#${word.replace(/[^a-zA-Z0-9]/g, "")}`);
     
@@ -138,7 +162,7 @@ export function AIContentCreatorPage() {
     return [...hashtags, ...selectedCommon].join(" ");
   };
   
-  const generateMockCTA = (industry) => {
+  const generateDefaultCTA = (industry) => {
     const ctas = [
       "What are your thoughts on this? I'd love to hear your perspective in the comments.",
       "If you're interested in learning more about this topic, let's connect.",
@@ -193,35 +217,51 @@ export function AIContentCreatorPage() {
     return date.toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' });
   };
   
+  const clearForm = () => {
+    setTopic("");
+    setIndustry("");
+    setTargetAudience("");
+    setCustomCTA("");
+    setTone("professional");
+    setVoiceStyle("straightforward");
+    setIncludeHashtags(true);
+    setIncludeCTA(true);
+  };
+  
   return (
     <div className="container mx-auto py-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold mb-2">AI Content Creator</h1>
           <p className="text-muted-foreground">
-            Generate professional content for LinkedIn with AI assistance
+            Generate professional content for social media and blogs with AI assistance
           </p>
         </div>
         
         <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
-          <Linkedin className="w-3 h-3" />
-          <span>LinkedIn Optimized</span>
+          <Sparkles className="w-3 h-3" />
+          <span>AI Powered</span>
         </Badge>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="post">Create Post</TabsTrigger>
-          <TabsTrigger value="library">Content Library</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsList className="mb-6 grid grid-cols-3 w-full max-w-md mx-auto">
+          <TabsTrigger value="post">Create Content</TabsTrigger>
+          {/* <TabsTrigger value="library">Content Library</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
         </TabsList>
         
         <TabsContent value="post">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Content Parameters</CardTitle>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Content Parameters</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={clearForm} title="Reset form">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <CardDescription>
                     Customize your AI-generated content
                   </CardDescription>
@@ -232,64 +272,91 @@ export function AIContentCreatorPage() {
                     <Textarea 
                       id="topic" 
                       placeholder="What would you like to post about?"
-                      rows={3}
+                      rows={2}
                       value={topic}
                       onChange={(e) => setTopic(e.target.value)}
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="industry">Industry</Label>
-                    <Select value={industry} onValueChange={setIndustry}>
-                      <SelectTrigger id="industry">
-                        <SelectValue placeholder="Select industry" />
+                    <Label htmlFor="platform">Platform</Label>
+                    <Select value={platform} onValueChange={setPlatform}>
+                      <SelectTrigger id="platform" className="w-full">
+                        <SelectValue placeholder="Select platform" />
                       </SelectTrigger>
                       <SelectContent>
-                        {industryOptions.map((option) => (
-                          <SelectItem key={option} value={option.toLowerCase()}>
-                            {option}
+                        {platformOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            <div className="flex items-center">
+                              {option.icon}
+                              <span className="ml-2">{option.name}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="audience">Target Audience</Label>
-                    <Input
-                      id="audience"
-                      placeholder="Who is this content for?"
-                      value={targetAudience}
-                      onChange={(e) => setTargetAudience(e.target.value)}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="industry">Industry</Label>
+                      <Select value={industry} onValueChange={setIndustry}>
+                        <SelectTrigger id="industry">
+                          <SelectValue placeholder="Select industry" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {industryOptions.map((option) => (
+                            <SelectItem key={option} value={option.toLowerCase()}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="audience">Target Audience</Label>
+                      <Input
+                        id="audience"
+                        placeholder="Who is this content for?"
+                        value={targetAudience}
+                        onChange={(e) => setTargetAudience(e.target.value)}
+                      />
+                    </div>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="tone">Content Tone</Label>
-                    <Select value={tone} onValueChange={setTone}>
-                      <SelectTrigger id="tone">
-                        <SelectValue placeholder="Select tone" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {toneOptions.map((option) => (
-                          <SelectItem key={option} value={option.toLowerCase()}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="length">Content Length: {contentLengthLabels[contentLength - 1]}</Label>
-                    <Slider
-                      id="length"
-                      min={1}
-                      max={4}
-                      step={1}
-                      value={[contentLength]}
-                      onValueChange={(values) => setContentLength(values[0])}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tone">Content Tone</Label>
+                      <Select value={tone} onValueChange={setTone}>
+                        <SelectTrigger id="tone">
+                          <SelectValue placeholder="Select tone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {toneOptions.map((option) => (
+                            <SelectItem key={option} value={option.toLowerCase()}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="voiceStyle">Voice Style</Label>
+                      <Select value={voiceStyle} onValueChange={setVoiceStyle}>
+                        <SelectTrigger id="voiceStyle">
+                          <SelectValue placeholder="Select voice style" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {voiceStyleOptions.map((option) => (
+                            <SelectItem key={option} value={option.toLowerCase()}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   
                   <div className="space-y-4 pt-4">
@@ -302,13 +369,24 @@ export function AIContentCreatorPage() {
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="cta">Include Call-to-Action</Label>
-                      <Switch
-                        id="cta"
-                        checked={includeCTA}
-                        onCheckedChange={setIncludeCTA}
-                      />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="cta">Include Call-to-Action</Label>
+                        <Switch
+                          id="cta"
+                          checked={includeCTA}
+                          onCheckedChange={setIncludeCTA}
+                        />
+                      </div>
+                      
+                      {includeCTA && (
+                        <Input
+                          id="customCTA"
+                          placeholder="Custom call-to-action (optional)"
+                          value={customCTA}
+                          onChange={(e) => setCustomCTA(e.target.value)}
+                        />
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -343,15 +421,25 @@ export function AIContentCreatorPage() {
               )}
             </div>
             
-            <div className="md:col-span-2">
+            <div className="lg:col-span-2">
               <Card className="h-full">
                 <CardHeader>
-                  <CardTitle>Generated Content</CardTitle>
-                  <CardDescription>
-                    {generatedContent 
-                      ? `Created on ${formatDate(generatedContent.createdAt)}` 
-                      : "Your content will appear here"}
-                  </CardDescription>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Generated Content</CardTitle>
+                      <CardDescription>
+                        {generatedContent 
+                          ? `Created on ${formatDate(generatedContent.createdAt)}` 
+                          : "Your content will appear here"}
+                      </CardDescription>
+                    </div>
+                    {generatedContent && (
+                      <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+                        {getPlatformIcon(generatedContent.platform)}
+                        <span className="capitalize ml-1">{generatedContent.platform}</span>
+                      </Badge>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {isGenerating ? (
@@ -362,7 +450,7 @@ export function AIContentCreatorPage() {
                         <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
                       </div>
                       <p className="text-muted-foreground">
-                        Creating your LinkedIn post with AI...
+                        Creating your {platformOptions.find(p => p.id === platform)?.name || 'social media'} content with AI...
                       </p>
                     </div>
                   ) : generatedContent ? (
@@ -373,17 +461,17 @@ export function AIContentCreatorPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Linkedin className="w-12 h-12 text-blue-500 mb-4 opacity-50" />
+                      <Sparkles className="w-12 h-12 text-blue-500 mb-4 opacity-50" />
                       <p className="text-muted-foreground max-w-md">
                         Fill out the content parameters and click "Generate Content" to create
-                        an AI-optimized LinkedIn post
+                        AI-optimized social media content
                       </p>
                     </div>
                   )}
                 </CardContent>
                 {generatedContent && (
                   <CardFooter className="flex justify-between flex-wrap gap-2">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button variant="outline" size="sm" onClick={handleCopyToClipboard}>
                         <Copy className="mr-2 h-4 w-4" />
                         Copy
@@ -399,7 +487,7 @@ export function AIContentCreatorPage() {
                     </div>
                     <Button>
                       <Send className="mr-2 h-4 w-4" />
-                      Post to LinkedIn
+                      Post to {platformOptions.find(p => p.id === generatedContent.platform)?.name || 'Platform'}
                     </Button>
                   </CardFooter>
                 )}
@@ -448,10 +536,10 @@ export function AIContentCreatorPage() {
                     <div key={content.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                          <Linkedin className="h-4 w-4 text-blue-600" />
+                          {getPlatformIcon(content.platform)}
                           <h3 className="font-medium">{content.topic}</h3>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           <Badge 
                             className={content.status === "published" 
                               ? "bg-green-100 text-green-800" 
@@ -474,7 +562,7 @@ export function AIContentCreatorPage() {
                         }
                       </div>
                       
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 flex-wrap">
                         <Button variant="outline" size="sm">
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
@@ -482,6 +570,10 @@ export function AIContentCreatorPage() {
                         <Button variant="outline" size="sm">
                           <Copy className="mr-2 h-4 w-4" />
                           Copy
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteSaved(content.id)}>
+                          <AlertTriangle className="mr-2 h-4 w-4" />
+                          Delete
                         </Button>
                         {content.status !== "published" && (
                           <Button size="sm">
