@@ -234,7 +234,6 @@ export const ContentSchedulerPageBase = () => {
       image_path: file,
     }));
     
-    toast.success(`Image "${file.name}" selected`);
   };
   
   const handleVideoChange = (e) => {
@@ -660,7 +659,9 @@ export const ContentSchedulerPageBase = () => {
                         disabled={loadingPlatforms || platforms.length === 0}
                       >
                         <SelectTrigger className="h-11 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800">
-                          <SelectValue placeholder={loadingPlatforms ? "Loading platforms..." : "Select a platform"} />
+                          <SelectValue placeholder={loadingPlatforms ? "Loading platforms..." : "Select a platform"}>
+                            {formData.platform_id && platforms.find(p => p.platform_id === formData.platform_id)?.platform_name}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {platforms.map((platform) => (
@@ -697,8 +698,10 @@ export const ContentSchedulerPageBase = () => {
                                   : filteredPages.length === 0 
                                     ? "No pages available" 
                                     : "Select a page"
-                            } 
-                          />
+                            }
+                          >
+                            {formData.page_id && filteredPages.find(p => p.page_id === formData.page_id)?.page_name}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {filteredPages.map((page) => (

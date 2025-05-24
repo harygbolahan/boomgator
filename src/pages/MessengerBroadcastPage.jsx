@@ -238,7 +238,9 @@ export function MessengerBroadcastPage() {
                 <div className="flex-1 flex items-center gap-4">
                   <Select value={selectedPage} onValueChange={setSelectedPage}>
                     <SelectTrigger className="w-[250px]">
-                      <SelectValue placeholder="Select Facebook page" />
+                      <SelectValue placeholder="Select Facebook page">
+                        {selectedPage && pages.find(p => p.page_id === selectedPage)?.page_name}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {pages.map(page => (
@@ -305,7 +307,9 @@ export function MessengerBroadcastPage() {
                 <Label htmlFor="page">Facebook Page</Label>
                 <Select value={selectedPage} onValueChange={setSelectedPage}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a page" />
+                    <SelectValue placeholder="Select a page">
+                      {selectedPage && pages.find(p => p.page_id === selectedPage)?.page_name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {pages.map(page => (

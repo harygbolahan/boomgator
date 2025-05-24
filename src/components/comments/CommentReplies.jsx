@@ -410,7 +410,9 @@ export const CommentReplies = () => {
 					<label className="text-sm font-medium">Select Page</label>
 					<Select value={selectedPage} onValueChange={handlePageChange}>
 						<SelectTrigger>
-							<SelectValue placeholder="Choose a page" />
+							<SelectValue placeholder="Choose a page">
+								{selectedPage && pages.find(p => p.page_id === selectedPage)?.page_name}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
 							{pages.map((page) => (

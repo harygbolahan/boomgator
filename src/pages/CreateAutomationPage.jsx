@@ -41,7 +41,9 @@ export function CreateAutomationPage() {
     post_id: "",
     label: "",
     comment_content: "",
-    dm_content: ""
+    dm_content: "",
+    tittle: "",
+    url: ""
   });
   
   // State for services and loading conditions
@@ -311,7 +313,9 @@ export function CreateAutomationPage() {
                 disabled={isLoading || loadingServices}
               >
                 <SelectTrigger id="service_id">
-                  <SelectValue placeholder={loadingServices ? "Loading services..." : "Select service type"} />
+                  <SelectValue placeholder={loadingServices ? "Loading services..." : "Select service type"}>
+                    {formData.service_id && services.find(s => s.id.toString() === formData.service_id)?.service}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {services.map((service) => (
@@ -338,7 +342,9 @@ export function CreateAutomationPage() {
                 disabled={isLoading}
               >
                 <SelectTrigger id="platform_id">
-                  <SelectValue placeholder="Select platform" />
+                  <SelectValue placeholder="Select platform">
+                    {formData.platform_id && platforms.find(p => p.platform_id === formData.platform_id)?.platform_name}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {platforms.map((platform) => (
@@ -369,8 +375,10 @@ export function CreateAutomationPage() {
                         : !formData.platform_id 
                           ? "Select a platform first" 
                           : "Select page"
-                    } 
-                  />
+                    }
+                  >
+                    {formData.page_id && filteredPages.find(p => p.page_id === formData.page_id)?.page_name}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {filteredPages.map((page) => (
@@ -450,8 +458,10 @@ export function CreateAutomationPage() {
                           : !formData.page_id 
                             ? "Select a page first" 
                             : "Select post (optional)"
-                      } 
-                    />
+                      }
+                    >
+                      {formData.post_id && posts.find(p => p.post_id === formData.post_id)?.messages?.substring(0, 50)}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Posts</SelectItem>
@@ -483,6 +493,36 @@ export function CreateAutomationPage() {
               />
               <p className="text-xs text-muted-foreground">
                 When someone sends a message containing these keywords, your automation will respond
+              </p>
+            </div>
+
+            {/* Title field */}
+            <div className="space-y-2">
+              <Label htmlFor="tittle">Titles</Label>
+              <Input
+                id="tittle"
+                placeholder="Enter automation titles (comma separated)"
+                value={formData.tittle}
+                onChange={(e) => handleChange("tittle", e.target.value)}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter one or more titles, separated by commas
+              </p>
+            </div>
+
+            {/* URL field */}
+            <div className="space-y-2">
+              <Label htmlFor="url">URLs</Label>
+              <Input
+                id="url"
+                placeholder="Enter URLs (comma separated)"
+                value={formData.url}
+                onChange={(e) => handleChange("url", e.target.value)}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter one or more URLs, separated by commas
               </p>
             </div>
 

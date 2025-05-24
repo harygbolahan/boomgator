@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,8 @@ import {
   Share2,
   Reply,
   Loader,
-  Wallet
+  Wallet,
+  RefreshCw
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
@@ -44,6 +45,7 @@ import { Select } from "@/components/ui/select";
 import { useBoom } from "@/contexts/BoomContext";
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   // Get dashboard data from context
   const { 
     homeData, 
@@ -58,7 +60,6 @@ export function DashboardPage() {
   } = useBoom();
   
   // State for dialogs
-  const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
   const [isExportDataOpen, setIsExportDataOpen] = useState(false);
   const [isEditPostOpen, setIsEditPostOpen] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
@@ -285,14 +286,6 @@ export function DashboardPage() {
     setIsExportDataOpen(false);
   };
   
-  // Add Account functionality
-  const handleAddAccount = (event) => {
-    event.preventDefault();
-    // In a real app, this would submit form data to an API
-    console.log("Account added");
-    setIsAddAccountOpen(false);
-  };
-  
   // Edit Post functionality
   const openEditPost = (post) => {
     setEditingPost(post);
@@ -381,7 +374,9 @@ export function DashboardPage() {
         </div>
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
           {/* Refresh button */}
+          
           <Button 
+            
             variant="outline" 
             size="sm" 
             className="h-8 text-xs border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 flex items-center gap-1"
@@ -391,94 +386,20 @@ export function DashboardPage() {
             {loadingHome ? (
               <Loader size={12} className="animate-spin" />
             ) : (
-              <ArrowUp size={12} className="rotate-90" />
+              <RefreshCw size={12} className="rotate-90" />
             )}
             <span className="hidden sm:inline">Refresh</span>
-          </Button>
-          
-          {/* Export Data functionality */}
-          <Dialog open={isExportDataOpen} onOpenChange={setIsExportDataOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-xs border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50">
-                <Download size={12} className="mr-1 sm:mr-2" /> <span className="hidden sm:inline">Export</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-[calc(100%-20px)] max-w-[340px] xs:max-w-sm sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-sm sm:text-base">Export Dashboard Data</DialogTitle>
-                <DialogDescription className="text-xs">
-                  Choose the format for your data export
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-3 py-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={() => handleExportData('csv')} variant="outline" className="flex items-center gap-1 h-8 text-xs">
-                    <Download size={12} /> CSV
-                  </Button>
-                  <Button onClick={() => handleExportData('xlsx')} variant="outline" className="flex items-center gap-1 h-8 text-xs">
-                    <Download size={12} /> Excel
-                  </Button>
-                  <Button onClick={() => handleExportData('pdf')} variant="outline" className="flex items-center gap-1 h-8 text-xs">
-                    <Download size={12} /> PDF
-                  </Button>
-                  <Button onClick={() => handleExportData('json')} variant="outline" className="flex items-center gap-1 h-8 text-xs">
-                    <Download size={12} /> JSON
-                  </Button>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" className="h-8 text-xs" onClick={() => setIsExportDataOpen(false)}>Cancel</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          </Button>          
 
-          {/* Add Account functionality */}
-          <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="h-8 text-xs bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
-                <Plus size={12} className="mr-1 sm:mr-2" /> <span className="hidden sm:inline">Add Account</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-[calc(100%-20px)] max-w-[340px] xs:max-w-sm sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-sm sm:text-base">Connect Social Media Account</DialogTitle>
-                <DialogDescription className="text-xs">
-                  Link your social media profiles to enable automation
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleAddAccount}>
-                <div className="grid gap-3 py-3">
-                  <div className="grid gap-1.5">
-                    <label htmlFor="platform" className="text-xs font-medium">Platform</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button type="button" variant="outline" className="flex-1 h-8 text-xs flex items-center gap-1 justify-center">
-                        <Facebook size={14} /> <span className="hidden xxs:inline">FB</span>
-                      </Button>
-                      <Button type="button" variant="outline" className="flex-1 h-8 text-xs flex items-center gap-1 justify-center">
-                        <Instagram size={14} /> <span className="hidden xxs:inline">IG</span>
-                      </Button>
-                      <Button type="button" variant="outline" className="flex-1 h-8 text-xs flex items-center gap-1 justify-center">
-                        <Twitter size={14} /> <span className="hidden xxs:inline">X</span>
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <label htmlFor="email" className="text-xs font-medium">Email</label>
-                    <Input id="email" type="email" className="h-8 text-xs" />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <label htmlFor="password" className="text-xs font-medium">Password</label>
-                    <Input id="password" type="password" className="h-8 text-xs" />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => setIsAddAccountOpen(false)}>Cancel</Button>
-                  <Button type="submit" size="sm" className="h-8 text-xs bg-gradient-to-r from-indigo-600 to-purple-600">Connect</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-          
+          {/* Add Account button */}
+          <Button 
+            size="sm" 
+            className="h-8 text-xs bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+            onClick={() => navigate('/integrations')}
+          >
+            <Plus size={12} className="mr-1 sm:mr-2" /> <span className="hidden sm:inline">Add Account</span>
+          </Button>
+
           {/* Wallet History Dialog */}
           <Dialog open={isWalletHistoryOpen} onOpenChange={setIsWalletHistoryOpen}>
             <DialogTrigger asChild>
