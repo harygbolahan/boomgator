@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
@@ -16,22 +16,37 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { XCircle, Save, Plus, Zap, Filter, CheckCircle, Info, AlertTriangle } from "lucide-react";
+import { XCircle, Save, Plus, Zap, Filter, CheckCircle, Info, AlertTriangle, MessageCircle, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from 'framer-motion';
+import { Textarea } from "@/components/ui/textarea";
+import { useBoom } from '@/contexts/BoomContext';
+import { toast } from 'react-toastify';
 
 // Custom node types
-import TriggerNode from './nodes/TriggerNode';
-import ConditionNode from './nodes/ConditionNode';
-import ActionNode from './nodes/ActionNode';
+import InstagramTriggerNode from './nodes/InstagramTriggerNode';
+import InstagramMessageNode from './nodes/InstagramMessageNode';
+import FacebookTriggerNode from './nodes/FacebookTriggerNode';
+import FacebookMessageNode from './nodes/FacebookMessageNode';
+
+// Configuration Sidebar
+import NodeConfigurationSidebar from './NodeConfigurationSidebar';
+
+// Import Modals
+import SelectFacebookPageModal from './modals/SelectFacebookPageModal';
+import SelectFacebookPostModal from './modals/SelectFacebookPostModal';
+import SetFacebookKeywordsModal from './modals/SetFacebookKeywordsModal';
+import ConfigureFacebookMessageModal from './modals/ConfigureFacebookMessageModal';
 
 // Node types definition - moved outside component
 const nodeTypes = {
-  triggerNode: TriggerNode,
-  conditionNode: ConditionNode,
-  actionNode: ActionNode,
+  instagramTrigger: InstagramTriggerNode,
+  instagramMessage: InstagramMessageNode,
+  facebookTrigger: FacebookTriggerNode,
+  facebookMessage: FacebookMessageNode,
 };
 
-export function AutomationFlowBuilder({ onSave, initialData }) {
+const AutomationFlowBuilder = forwardRef(function AutomationFlowBuilder({ onSave, initialData }, ref) {
+  const { getPlatforms, getPages, getAutoReplyServices } = useBoom();
   const reactFlowWrapper = useRef(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialData?.nodes || []);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialData?.edges || []);
@@ -39,10 +54,33 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
   const [selectedNode, setSelectedNode] = useState(null);
   const [automationName, setAutomationName] = useState(initialData?.name || 'New Automation Flow');
   const [activeTab, setActiveTab] = useState('nodes');
-  const [showMiniMap, setShowMiniMap] = useState(false);
+  const [showMiniMap, setShowMiniMap] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
   const [zoomed, setZoomed] = useState(false);
+  const [platforms, setPlatforms] = useState([]);
+  const [pages, setPages] = useState([]);
+  const [services, setServices] = useState([]);
+
+  const [selectedNodeForSidebar, setSelectedNodeForSidebar] = useState(null);
+
+  const closeConfigSidebar = () => {
+    setSelectedNodeForSidebar(null);
+  };
+
+  // Expose imperative methods
+  useImperativeHandle(ref, () => ({
+    addNode: (type, data) => {
+      const id = `${type}_${Date.now()}`;
+      const position = reactFlowInstance ? reactFlowInstance.project({ x: 200, y: 200 }) : { x: 200, y: 200 };
+      const newNode = { id, type, position, data: { ...data, onDelete: handleDeleteNode, onChange: (upd) => handleNodeUpdate(id, upd) } };
+      setNodes(nds => nds.concat(newNode));
+      return id;
+    },
+    connectNodes: (source, target) => {
+      setEdges(eds => addEdge({ id: `edge_${source}_${target}_${Date.now()}`, source, target, animated: true, style: { stroke: '#7c3aed', strokeWidth: 2 } }, eds));
+    }
+  }), [reactFlowInstance, handleDeleteNode, handleNodeUpdate]);
 
   // Check window width on mount and resize
   useEffect(() => {
@@ -59,9 +97,33 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
     };
   }, []);
 
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch platforms
+        const platformsResponse = await getPlatforms();
+        setPlatforms(platformsResponse);
+
+        // Fetch pages
+        const pagesResponse = await getPages();
+        setPages(pagesResponse);
+
+        // Fetch services
+        const servicesResponse = await getAutoReplyServices();
+        setServices(servicesResponse);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error("Could not load editor support data.");
+      }
+    };
+
+    fetchData();
+  }, [getPlatforms, getPages, getAutoReplyServices]);
+
   // Connect nodes when edges are created
   const onConnect = useCallback((params) => {
-    setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#7c3aed', strokeWidth: 2 } }, eds));
+    setEdges((eds) => addEdge({ ...params, id: `edge_${params.source}_${params.target}_${Date.now()}`, animated: true, style: { stroke: '#7c3aed', strokeWidth: 2 } }, eds));
   }, [setEdges]);
 
   // Setup React Flow instance when it's ready
@@ -82,6 +144,28 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
+  // Handle node deletion (hoisted)
+  function handleDeleteNode(nodeId) {
+    setNodes(nds => nds.filter(n => n.id !== nodeId));
+    setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+    if (selectedNodeForSidebar && selectedNodeForSidebar.id === nodeId) {
+      setSelectedNodeForSidebar(null);
+    }
+  }
+
+  // Handle node update (hoisted)
+  function handleNodeUpdate(nodeId, updatedDataPartial) {
+    setNodes(prev =>
+      prev.map(node =>
+        node.id === nodeId ? { ...node, data: { ...node.data, ...updatedDataPartial } } : node
+      )
+    );
+    if (selectedNodeForSidebar && selectedNodeForSidebar.id === nodeId) {
+      setSelectedNodeForSidebar(prev => ({ ...prev, data: { ...prev.data, ...updatedDataPartial } }));
+    }
+    setValidationErrors([]);
+  }
+
   // Handle drop event to add new nodes
   const onDrop = useCallback(
     (event) => {
@@ -89,7 +173,8 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
 
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const type = event.dataTransfer.getData('application/reactflow');
-      const nodeData = JSON.parse(event.dataTransfer.getData('application/nodeData'));
+      const nodeDataString = event.dataTransfer.getData('application/nodeData');
+      const initialNodeData = nodeDataString ? JSON.parse(nodeDataString) : {};
 
       // Check if the dropped element is valid
       if (typeof type === 'undefined' || !type) {
@@ -102,15 +187,22 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
         y: event.clientY - reactFlowBounds.top,
       });
 
+      // Generate a unique node ID
+      const nodeId = `${type}_${Date.now()}`;
+
       // Create new node
       const newNode = {
-        id: `${type}_${Date.now()}`,
+        id: nodeId,
         type,
         position,
         data: { 
-          ...nodeData, 
-          label: nodeData.label || `New ${type}`,
+          ...initialNodeData, 
+          label: initialNodeData.label || `New ${type.charAt(0).toUpperCase() + type.slice(1)} Node`,
+          platforms,
+          pages,
+          services,
           onDelete: handleDeleteNode,
+          onChange: (updatedData) => handleNodeUpdate(nodeId, updatedData),
         },
       };
 
@@ -118,25 +210,13 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
       setNodes((nds) => nds.concat(newNode));
       setValidationErrors([]); // Clear validation errors on node add
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, platforms, pages, services, handleDeleteNode, handleNodeUpdate]
   );
 
   // Handle node click
-  const onNodeClick = useCallback((_, node) => {
-    setSelectedNode(node);
-    if (isMobile) {
-      setActiveTab('properties');
-    }
-  }, [isMobile]);
-
-  // Handle node deletion
-  const handleDeleteNode = useCallback((nodeId) => {
-    setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-    setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
-    if (selectedNode && selectedNode.id === nodeId) {
-      setSelectedNode(null);
-    }
-  }, [selectedNode, setNodes, setEdges]);
+  const onNodeClick = useCallback((event, node) => {
+    setSelectedNodeForSidebar(node);
+  }, []);
 
   // Validate the flow
   const validateFlow = useCallback(() => {
@@ -180,25 +260,36 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
   const handleSave = useCallback(() => {
     // Validate the flow
     if (!validateFlow()) {
+      toast.error("Please fix validation errors before saving.");
       return;
     }
 
     // Create the automation object
     const automation = {
       name: automationName,
-      nodes,
+      nodes: nodes.map(n => { const { onDelete, onChange, ...restData } = n.data; return { ...n, data: restData }; }),
       edges,
       // Extract essential data for the main AutomationPage
       platform: extractPlatform(nodes),
       type: extractType(nodes),
       trigger: extractTriggerDescription(nodes),
       response: extractResponseDescription(nodes),
+      serviceType: extractServiceType(nodes),
+      platformId: extractPlatformId(nodes),
+      pageId: extractPageId(nodes),
+      postId: extractPostId(nodes),
+      triggers: extractTriggers(nodes),
+      titles: extractTitles(nodes),
+      urls: extractUrls(nodes),
+      commentResponse: extractCommentResponse(nodes),
+      dmResponse: extractDmResponse(nodes),
     };
 
     if (onSave) {
       onSave(automation);
+      toast.success("Automation flow saved!");
     }
-  }, [nodes, edges, automationName, onSave, validateFlow]);
+  }, [nodes, edges, automationName, onSave, validateFlow, platforms, pages, services]);
 
   // Helper functions to extract data from nodes
   const extractPlatform = (nodes) => {
@@ -221,496 +312,310 @@ export function AutomationFlowBuilder({ onSave, initialData }) {
     return actionNodes.map(n => n.data?.description || 'Custom action').join(', ');
   };
 
-  // Create draggable node items
-  const onDragStart = (event, nodeType, data) => {
-    event.dataTransfer.setData('application/reactflow', nodeType);
-    event.dataTransfer.setData('application/nodeData', JSON.stringify(data));
-    event.dataTransfer.effectAllowed = 'move';
+  const extractServiceType = (nodes) => {
+    const triggerNode = nodes.find(n => n.type === 'triggerNode');
+    return triggerNode?.data?.serviceId || 'Custom';
   };
 
-  // Handle node update
-  const handleNodeUpdate = useCallback((nodeId, newData) => {
-    setNodes((prevNodes) =>
-      prevNodes.map((node) =>
-        node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node
-      )
-    );
-    setValidationErrors([]);
-  }, [setNodes]);
+  const extractPlatformId = (nodes) => {
+    const triggerNode = nodes.find(n => n.type === 'triggerNode');
+    return triggerNode?.data?.platformId || 'All Platforms';
+  };
+
+  const extractPageId = (nodes) => {
+    const triggerNode = nodes.find(n => n.type === 'triggerNode');
+    return triggerNode?.data?.pageId || 'All Pages';
+  };
+
+  const extractPostId = (nodes) => {
+    const triggerNode = nodes.find(n => n.type === 'triggerNode');
+    return triggerNode?.data?.postId || 'All Posts';
+  };
+
+  const extractTriggers = (nodes) => {
+    const triggerNode = nodes.find(n => n.type === 'triggerNode');
+    return triggerNode?.data?.triggers || [];
+  };
+
+  const extractTitles = (nodes) => {
+    const triggerNode = nodes.find(n => n.type === 'triggerNode');
+    return triggerNode?.data?.titles || [];
+  };
+
+  const extractUrls = (nodes) => {
+    const triggerNode = nodes.find(n => n.type === 'triggerNode');
+    return triggerNode?.data?.urls || [];
+  };
+
+  const extractCommentResponse = (nodes) => {
+    const actionNode = nodes.find(n => n.type === 'actionNode' && n.data.type === 'comment');
+    return actionNode?.data?.content || '';
+  };
+
+  const extractDmResponse = (nodes) => {
+    const actionNode = nodes.find(n => n.type === 'actionNode' && n.data.type === 'dm');
+    return actionNode?.data?.content || '';
+  };
+
+  // Create draggable node items
+  const onDragStart = (event, nodeType, data) => {
+    const nodeDataString = JSON.stringify(data);
+    event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.setData('application/nodeData', nodeDataString);
+    event.dataTransfer.effectAllowed = 'move';
+  };
 
   // Toggle zoom for small screens
   const toggleZoom = useCallback(() => {
     setZoomed(!zoomed);
   }, [zoomed]);
 
+  // Simplified NodeProperties - This will be replaced/augmented by the new Config Sidebar
+  // For now, it only shows basic info or a placeholder.
+  const NodeProperties = ({ node, onChange }) => {
+    if (!node) return <div className="p-4 text-sm text-gray-500">Select a node to see its properties.</div>;
+
+    const commonFields = (
+      <div className="space-y-2">
+        <Label htmlFor={`label-${node.id}`}>Label</Label>
+        <Input
+          id={`label-${node.id}`}
+          value={node.data.label || ''}
+          onChange={(e) => onChange({ label: e.target.value })}
+        />
+      </div>
+    );
+
+    // This part will be handled by the new dedicated configuration sidebar
+    // and its modals for each node type.
+    return (
+      <div className="p-4 space-y-4">
+        <h3 className="text-lg font-semibold">Edit: {node.data.label || node.type}</h3>
+        {commonFields}
+        <p className="text-xs text-gray-400">Detailed configuration will be in the right sidebar / modals.</p>
+        {/* Example: Specific fields for Instagram Trigger, to be removed/refactored */}
+        {/* {node.type === 'instagramTrigger' && (
+          <>
+            <div className="space-y-2">
+              <Label>Keywords (Current: {node.data.keywords?.join(', ') || 'None'})</Label>
+               <Button onClick={() => alert('Open keywords modal for ' + node.id)}>Set Keywords</Button>
+            </div>
+             <div className="space-y-2">
+              <Label>Post (Current: {node.data.postTitle || 'All'})</Label>
+               <Button onClick={() => alert('Open post selection modal for ' + node.id)}>Select Post</Button>
+            </div>
+          </>
+        )} */}
+      </div>
+    );
+  };
+
   return (
-    <div className={`border rounded-lg overflow-hidden transition-all ${zoomed ? 'h-[80vh]' : 'h-[600px]'} w-full`}>
-      <div className="h-full flex flex-col bg-muted/10">
-        {/* Header with automation name */}
-        <div className="p-3 border-b bg-card">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex-1">
-              <Label htmlFor="automation-name" className="sr-only">Automation Name</Label>
-              <Input
-                id="automation-name"
+    <ReactFlowProvider>
+      <div className="flex flex-col md:flex-row h-full w-full bg-gray-50" ref={reactFlowWrapper}>
+        {/* Palette Sidebar (Left or Collapsible) */}
+        {/* ... Palette rendering, ensuring NodeSelector is called correctly ... */}
+        <AnimatePresence>
+          {(activeTab === 'nodes' || !isMobile) && (
+            <motion.div
+              key="palette-sidebar"
+              initial={{ x: isMobile ? '-100%' : 0, opacity: isMobile ? 0 : 1 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: isMobile ? '-100%' : '-100%', opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className={`w-full md:w-72 bg-white border-r border-gray-200 p-4 shadow-lg overflow-y-auto shrink-0 ${isMobile ? 'fixed inset-0 z-20 md:relative' : 'relative'}`}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Add Nodes</h2>
+                {isMobile && <Button variant="ghost" size="icon" onClick={() => setActiveTab('canvas')}><XCircle /></Button>}
+              </div>
+              <NodeSelector onDragStart={onDragStart} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* React Flow Canvas */}
+        <div className="flex-grow h-full relative" onClick={() => { if (isMobile && activeTab !== 'canvas') setActiveTab('canvas'); }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onInit={onInit}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onNodeClick={onNodeClick}
+            onPaneClick={closeConfigSidebar}
+            nodeTypes={nodeTypes}
+            fitView
+            className="bg-gradient-to-br from-slate-50 to-gray-100">
+            <Controls />
+            {showMiniMap && <MiniMap nodeStrokeWidth={3} zoomable pannable />}
+            <Background color="#ccc" variant="dots" gap={16} size={1} />
+            <Panel position="top-left">
+              <Input 
                 type="text"
                 value={automationName}
                 onChange={(e) => setAutomationName(e.target.value)}
-                className="h-9"
-                placeholder="Enter automation name"
+                placeholder="Automation Name"
+                className="mt-2 ml-2 w-auto bg-white shadow-md"
               />
-            </div>
-            <Button 
-              size="sm"
-              onClick={handleSave}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Save className="mr-1.5 h-4 w-4" />
-              Save
-            </Button>
-            {isMobile && (
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={toggleZoom}
-              >
-                {zoomed ? 'Minimize' : 'Expand'}
-              </Button>
-            )}
-          </div>
+            </Panel>
+            <Panel position="top-right">
+                <Button onClick={handleSave} className="mt-2 mr-2">
+                    <Save className="h-4 w-4 mr-2" /> Save Flow
+                </Button>
+            </Panel>
+          </ReactFlow>
         </div>
-        
-        {/* Main content */}
-        <div className="flex flex-1 flex-col md:flex-row h-full">
-          {/* Mobile tabs */}
-          {isMobile && (
-            <div className="border-b">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="w-full grid grid-cols-2">
-                  <TabsTrigger value="nodes">Nodes</TabsTrigger>
-                  <TabsTrigger value="properties">Properties</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          )}
-          
-          <ReactFlowProvider>
-            {/* Flow editor */}
-            <div className="flex-1 h-full relative">
-              <div className="reactflow-wrapper h-full" ref={reactFlowWrapper}>
-                <ReactFlow
-                  nodes={nodes}
-                  edges={edges}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
-                  onInit={onInit}
-                  onDrop={onDrop}
-                  onDragOver={onDragOver}
-                  onNodeClick={onNodeClick}
-                  nodeTypes={nodeTypes}
-                  fitView
-                  minZoom={0.2}
-                  maxZoom={4}
-                  deleteKeyCode="Delete"
-                  snapToGrid
-                  snapGrid={[15, 15]}
-                >
-                  <Controls showInteractive={!isMobile} />
-                  <Background variant="dots" gap={12} size={1} />
-                  
-                  {showMiniMap && (
-                    <MiniMap
-                      nodeStrokeWidth={3}
-                      zoomable
-                      pannable
-                      nodeBorderRadius={2}
-                    />
-                  )}
 
-                  {/* Mobile panels view handling with TabsContent */}
-                  {isMobile && (
-                    <>
-                      <TabsContent value="nodes" className="m-0 p-0 h-full">
-                        <Panel position="top-center" className="bg-background/95 backdrop-blur-sm w-full rounded-lg p-3 shadow-md max-h-[220px] overflow-y-auto mt-1">
-                          <NodeSelector onDragStart={onDragStart} />
-                        </Panel>
-                      </TabsContent>
-                      
-                      <TabsContent value="properties" className="m-0 p-0 h-full">
-                        {selectedNode ? (
-                          <Panel position="top-center" className="bg-background/95 backdrop-blur-sm w-full rounded-lg p-3 shadow-md max-h-[220px] overflow-y-auto mt-1">
-                            <NodeProperties 
-                              node={selectedNode} 
-                              onChange={(updatedData) => handleNodeUpdate(selectedNode.id, updatedData)} 
-                              onClose={() => setSelectedNode(null)}
-                            />
-                          </Panel>
-                        ) : (
-                          <Panel position="top-center" className="bg-background/95 backdrop-blur-sm w-full rounded-lg p-3 shadow-md mt-1">
-                            <div className="text-center text-muted-foreground p-4">
-                              <Info className="h-8 w-8 mx-auto mb-2 text-primary/60" />
-                              <p>Select a node to view its properties</p>
-                            </div>
-                          </Panel>
-                        )}
-                      </TabsContent>
-                    </>
-                  )}
-                
-                  {/* Desktop layout */}
-                  {!isMobile && (
-                    <>
-                      {/* Nodes panel */}
-                      <Panel position="top-left" className="bg-card rounded-lg p-4 shadow-md max-w-[250px]">
-                        <NodeSelector onDragStart={onDragStart} />
-                      </Panel>
-                      
-                      {/* Node properties panel */}
-                      {selectedNode && (
-                        <Panel position="top-right" className="bg-card rounded-lg p-4 shadow-md max-w-[300px]">
-                          <NodeProperties 
-                            node={selectedNode} 
-                            onChange={(updatedData) => handleNodeUpdate(selectedNode.id, updatedData)} 
-                            onClose={() => setSelectedNode(null)}
-                          />
-                        </Panel>
-                      )}
-                    </>
-                  )}
-                </ReactFlow>
-              </div>
+        {/* Right-hand Configuration Sidebar (Contextual) */}
+        <AnimatePresence>
+          {selectedNodeForSidebar && (
+            <motion.div
+              key="config-sidebar"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="md:w-80 bg-white border-l border-gray-200 shadow-xl md:h-full overflow-y-auto fixed top-0 right-0 h-full z-30 md:relative md:z-auto md:block">
+              <NodeConfigurationSidebar
+                key={selectedNodeForSidebar.id}
+                selectedNode={selectedNodeForSidebar}
+                onNodeDataChange={handleNodeUpdate}
+                onClose={closeConfigSidebar}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Mobile Tabs for switching between Palette and Properties */}
+        {isMobile && (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="fixed bottom-0 left-0 right-0 w-full bg-white border-t z-40 md:hidden">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="nodes">Palette</TabsTrigger>
+              <TabsTrigger value="canvas">Canvas</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+
+        {/* Validation Errors Display */}
+        {validationErrors.length > 0 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 md:bottom-4 md:left-auto md:right-4 md:translate-x-0 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md shadow-lg z-50 w-11/12 md:max-w-sm">
+                <div className="flex items-center mb-1">
+                    <AlertTriangle className="h-5 w-5 text-red-600 mr-2 shrink-0" />
+                    <h4 className="font-semibold text-red-800">Validation Issues</h4>
+                </div>
+                <ul className="list-disc list-inside text-sm text-red-700 space-y-0.5">
+                    {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                    ))}
+                </ul>
+                <Button variant="ghost" size="sm" onClick={() => setValidationErrors([])} className="mt-2 text-red-700 hover:bg-red-200 hover:text-red-800 float-right">
+                    Dismiss
+                </Button>
             </div>
-            
-            {/* Validation errors */}
-            <AnimatePresence>
-              {validationErrors.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="absolute bottom-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 bg-red-50 border border-red-200 rounded-lg p-3 shadow-lg max-w-md"
-                >
-                  <div className="flex items-start">
-                    <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-medium text-red-700">Please fix the following issues:</h4>
-                      <ul className="mt-1 text-sm text-red-600 pl-5 list-disc">
-                        {validationErrors.map((error, index) => (
-                          <li key={index}>{error}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <button 
-                      onClick={() => setValidationErrors([])} 
-                      className="ml-auto -mt-1 -mr-1 p-1 rounded-full hover:bg-red-100"
-                    >
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </ReactFlowProvider>
-        </div>
+        )}
       </div>
-    </div>
+    </ReactFlowProvider>
   );
-}
+});
 
 // Node Selector Component
 function NodeSelector({ onDragStart }) {
+  const triggerNodeOptions = [
+    {
+      type: 'instagramTrigger',
+      label: 'Instagram Comment Trigger',
+      description: 'Triggers on Instagram post/reel comments.',
+      icon: <Zap className="h-5 w-5 text-pink-500 inline-block mr-2" />,
+      data: { 
+        label: 'Instagram Comment Trigger',
+        service_id: '1',
+        platform_id: 'YOUR_INSTAGRAM_PLATFORM_ID'
+      }
+    },
+    {
+      type: 'facebookTrigger',
+      label: 'Facebook Post Trigger',
+      description: 'Triggers on Facebook post comments.',
+      icon: <Zap className="h-5 w-5 text-blue-600 inline-block mr-2" />, 
+      data: { 
+        label: 'Facebook Post Trigger', 
+        service_id: '1',
+        platform_id: '2708942999274612'
+      }
+    }
+  ];
+
+  const actionNodeOptions = [
+    {
+      type: 'instagramMessage',
+      label: 'Instagram Reply Action',
+      description: 'Sends an Instagram message or comment reply.',
+      icon: <MessageSquare className="h-5 w-5 text-purple-500 inline-block mr-2" />,
+      data: { 
+        label: 'Instagram Reply',
+      }
+    },
+    {
+      type: 'facebookMessage',
+      label: 'Facebook Reply Action',
+      description: 'Sends a Facebook message or comment reply.',
+      icon: <MessageSquare className="h-5 w-5 text-indigo-600 inline-block mr-2" />,
+      data: { 
+        label: 'Facebook Reply',
+      }
+    }
+  ];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-medium mb-3">Add Flow Elements</h3>
-        <div className="grid gap-2">
-          <div
-            className="border p-2 rounded-md cursor-move bg-blue-50 hover:bg-blue-100 transition-colors"
-            draggable
-            onDragStart={(e) =>
-              onDragStart(e, 'triggerNode', {
-                nodeType: 'trigger', 
-                label: 'Trigger',
-                platform: 'All Platforms',
-                triggerType: 'Comment',
-                description: 'Triggered by a new comment',
-              })
-            }
-          >
-            <div className="flex items-center gap-2">
-              <div className="bg-blue-100 p-1 rounded-full">
-                <Zap className="h-4 w-4 text-blue-600" />
+        <h3 className="text-lg font-semibold mb-3 border-b pb-2">Triggers</h3>
+        <div className="space-y-2">
+          {triggerNodeOptions.map((option) => (
+            <div
+              key={option.type}
+              className="flex items-center p-3 rounded-lg cursor-grab bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-all shadow-sm hover:shadow-md"
+              draggable
+              onDragStart={(e) => onDragStart(e, option.type, option.data)}
+            >
+              {option.icon}
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-800">{option.label}</p>
+                <p className="text-xs text-gray-500">{option.description}</p>
               </div>
-              <span className="text-sm font-medium">Trigger</span>
             </div>
-          </div>
-          <div
-            className="border p-2 rounded-md cursor-move bg-amber-50 hover:bg-amber-100 transition-colors"
-            draggable
-            onDragStart={(e) =>
-              onDragStart(e, 'conditionNode', {
-                nodeType: 'condition',
-                label: 'Condition',
-                conditionType: 'contains',
-                field: 'message',
-                value: '',
-                description: 'If condition is met',
-              })
-            }
-          >
-            <div className="flex items-center gap-2">
-              <div className="bg-amber-100 p-1 rounded-full">
-                <Filter className="h-4 w-4 text-amber-600" />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold mb-3 border-b pb-2">Actions</h3>
+        <div className="space-y-2">
+          {actionNodeOptions.map((option) => (
+            <div
+              key={option.type}
+              className="flex items-center p-3 rounded-lg cursor-grab bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-all shadow-sm hover:shadow-md"
+              draggable
+              onDragStart={(e) => onDragStart(e, option.type, option.data)}
+            >
+              {option.icon}
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-800">{option.label}</p>
+                <p className="text-xs text-gray-500">{option.description}</p>
               </div>
-              <span className="text-sm font-medium">Condition</span>
             </div>
-          </div>
-          <div
-            className="border p-2 rounded-md cursor-move bg-emerald-50 hover:bg-emerald-100 transition-colors"
-            draggable
-            onDragStart={(e) =>
-              onDragStart(e, 'actionNode', {
-                nodeType: 'action',
-                label: 'Action',
-                actionType: 'reply',
-                message: '',
-                description: 'Send a response',
-              })
-            }
-          >
-            <div className="flex items-center gap-2">
-              <div className="bg-emerald-100 p-1 rounded-full">
-                <CheckCircle className="h-4 w-4 text-emerald-600" />
-              </div>
-              <span className="text-sm font-medium">Action</span>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
       
-      <div className="text-xs text-muted-foreground mt-4">
-        <p className="mb-2">How to use:</p>
-        <ol className="list-decimal pl-4 space-y-1">
-          <li>Drag elements to the canvas</li>
-          <li>Connect nodes by dragging from handles</li>
-          <li>Click on nodes to edit properties</li>
-          <li>Save when your flow is complete</li>
-        </ol>
-      </div>
-    </div>
-  );
-}
-
-// Node Properties Component
-function NodeProperties({ node, onChange, onClose }) {
-  const getProperties = () => {
-    switch (node.type) {
-      case 'triggerNode':
-        return (
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="node-label">Label</Label>
-              <Input
-                id="node-label"
-                value={node.data.label || ''}
-                onChange={(e) => onChange({ label: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="platform">Platform</Label>
-              <select
-                id="platform"
-                value={node.data.platform || 'All Platforms'}
-                onChange={(e) => onChange({ platform: e.target.value })}
-                className="w-full p-2 mt-1 border rounded-lg"
-              >
-                <option value="All Platforms">All Platforms</option>
-                <option value="Facebook">Facebook</option>
-                <option value="Instagram">Instagram</option>
-                <option value="Twitter">Twitter</option>
-                <option value="LinkedIn">LinkedIn</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="trigger-type">Trigger Type</Label>
-              <select
-                id="trigger-type"
-                value={node.data.triggerType || 'Comment'}
-                onChange={(e) => onChange({ triggerType: e.target.value })}
-                className="w-full p-2 mt-1 border rounded-lg"
-              >
-                <option value="Comment">Comment</option>
-                <option value="Message">Message</option>
-                <option value="Keyword">Keyword</option>
-                <option value="Story">Story</option>
-                <option value="Custom">Custom</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={node.data.description || ''}
-                onChange={(e) => onChange({ description: e.target.value })}
-                className="mt-1"
-                placeholder="Describe what triggers this flow"
-              />
-            </div>
-          </div>
-        );
-        
-      case 'conditionNode':
-        return (
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="node-label">Label</Label>
-              <Input
-                id="node-label"
-                value={node.data.label || ''}
-                onChange={(e) => onChange({ label: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="field">Field</Label>
-              <select
-                id="field"
-                value={node.data.field || 'message'}
-                onChange={(e) => onChange({ field: e.target.value })}
-                className="w-full p-2 mt-1 border rounded-lg"
-              >
-                <option value="message">Message</option>
-                <option value="author">Author</option>
-                <option value="platform">Platform</option>
-                <option value="time">Time</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="condition-type">Condition</Label>
-              <select
-                id="condition-type"
-                value={node.data.conditionType || 'contains'}
-                onChange={(e) => onChange({ conditionType: e.target.value })}
-                className="w-full p-2 mt-1 border rounded-lg"
-              >
-                <option value="contains">Contains</option>
-                <option value="equals">Equals</option>
-                <option value="startsWith">Starts with</option>
-                <option value="endsWith">Ends with</option>
-                <option value="regex">Matches regex</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="value">Value</Label>
-              <Input
-                id="value"
-                value={node.data.value || ''}
-                onChange={(e) => onChange({ value: e.target.value })}
-                className="mt-1"
-                placeholder="Value to compare against"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={node.data.description || ''}
-                onChange={(e) => onChange({ description: e.target.value })}
-                className="mt-1"
-                placeholder="Describe this condition"
-              />
-            </div>
-          </div>
-        );
-        
-      case 'actionNode':
-        return (
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="node-label">Label</Label>
-              <Input
-                id="node-label"
-                value={node.data.label || ''}
-                onChange={(e) => onChange({ label: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="action-type">Action Type</Label>
-              <select
-                id="action-type"
-                value={node.data.actionType || 'reply'}
-                onChange={(e) => onChange({ actionType: e.target.value })}
-                className="w-full p-2 mt-1 border rounded-lg"
-              >
-                <option value="reply">Reply</option>
-                <option value="dm">Send DM</option>
-                <option value="tag">Tag User</option>
-                <option value="notification">Send Notification</option>
-                <option value="webhook">Call Webhook</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="message">Message</Label>
-              <textarea
-                id="message"
-                value={node.data.message || ''}
-                onChange={(e) => onChange({ message: e.target.value })}
-                className="w-full p-2 mt-1 border rounded-lg"
-                rows="3"
-                placeholder="Enter message content"
-              ></textarea>
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={node.data.description || ''}
-                onChange={(e) => onChange({ description: e.target.value })}
-                className="mt-1"
-                placeholder="Describe this action"
-              />
-            </div>
-          </div>
-        );
-        
-      default:
-        return <div>No properties available</div>;
-    }
-  };
-  
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Node Properties</h3>
-        <button 
-          className="p-1 rounded-full hover:bg-muted"
-          onClick={onClose}
-        >
-          <XCircle className="h-4 w-4 text-muted-foreground" />
-        </button>
-      </div>
-      
-      <div className="space-y-3">
-        {getProperties()}
-      </div>
-      
-      <div className="pt-2 flex justify-between border-t">
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          onClick={() => {
-            if (node.data.onDelete) {
-              node.data.onDelete(node.id);
-            }
-          }}
-        >
-          Delete Node
-        </Button>
-      </div>
+      {/* Example for other categories if needed later */}
+      {/* <div>
+        <h3 className="text-lg font-semibold mb-3 border-b pb-2">Utilities</h3>
+        // ... utility nodes ...
+      </div> */}
     </div>
   );
 }

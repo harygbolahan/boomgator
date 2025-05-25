@@ -239,7 +239,6 @@ export const BoomProvider = ({ children }) => {
     setAutomationsError(null);
     
     try {
-      // Ensure required fields are provided
       const completeData = {
         ...automationData,
         triggers: automationData.triggers || 0,
@@ -247,11 +246,12 @@ export const BoomProvider = ({ children }) => {
       };
       
       const response = await api().post('/automations/set', completeData);
-      await getAllAutomations(); // Refresh the list
+      await getAllAutomations(); 
       toast.success('Automation created successfully');
       return response.data;
     } catch (error) {
       const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error creating automation";
+      console.error('Error creating automation:', errorMsg);
       setAutomationsError(errorMsg);
       toast.error(`Error creating automation: ${errorMsg}`);
       return null;

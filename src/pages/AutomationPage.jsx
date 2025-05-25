@@ -228,7 +228,7 @@ export function AutomationPage() {
                 <TooltipTrigger asChild>
                   <Button 
                     className="w-full sm:w-auto"
-                    onClick={() => navigate("/create-automation")}
+                    onClick={() => navigate("/flow")}
                   >
                     <Plus className="mr-1.5 h-4 w-4" />
                     <span>Create Automation</span>

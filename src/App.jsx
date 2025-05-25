@@ -25,6 +25,7 @@ import { NotFoundPage } from "@/pages/NotFoundPage"
 import { SubscriptionPage } from "@/pages/SubscriptionPage"
 import LiveMessaging from "@/pages/LiveMessaging"
 import PagesManagementPage from "@/pages/PagesManagementPage"
+import Flow from "@/pages/Flow"
 import { AIContentCreatorPage } from "@/pages/AIContentCreatorPage"
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -102,6 +103,7 @@ function App() {
               <Route path="/live-messaging" element={<LiveMessaging />} />
               <Route path="/subscription" element={<SubscriptionPage />} />
               <Route path="/ai-content-creator" element={<AIContentCreatorPage />} />
+              <Route path="/flow" element={<Flow />} />
             </Route>
             
             {/* 404 Not Found */}
