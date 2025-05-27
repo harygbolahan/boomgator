@@ -1,96 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, CheckCheck, AlertCircle, MessageSquare, Calendar, Check, Filter, Search, Trash2, CheckSquare } from "lucide-react";
-
-// Sample notifications data
-const initialNotifications = [
-  {
-    id: 1,
-    type: "alert",
-    title: "Account Connected",
-    message: "Your Instagram account has been successfully connected.",
-    time: "5 minutes ago",
-    read: false,
-    icon: <CheckCheck className="h-5 w-5 text-green-500" />,
-  },
-  {
-    id: 2,
-    type: "warning",
-    title: "Automation Paused",
-    message: "The DM responder automation has been paused due to API limits.",
-    time: "2 hours ago",
-    read: false,
-    icon: <AlertCircle className="h-5 w-5 text-amber-500" />,
-  },
-  {
-    id: 3,
-    type: "message",
-    title: "New Comment",
-    message: "Someone commented on your latest post: 'Great content! Looking forward to more.'",
-    time: "Yesterday",
-    read: true,
-    icon: <MessageSquare className="h-5 w-5 text-blue-500" />,
-  },
-  {
-    id: 4,
-    type: "alert",
-    title: "Post Scheduled",
-    message: "Your post has been scheduled for tomorrow at 10:00 AM.",
-    time: "2 days ago",
-    read: true,
-    icon: <Calendar className="h-5 w-5 text-indigo-500" />,
-  },
-  {
-    id: 5,
-    type: "warning",
-    title: "Storage Limit",
-    message: "You're approaching your storage limit. Consider upgrading your plan.",
-    time: "3 days ago",
-    read: true,
-    icon: <AlertCircle className="h-5 w-5 text-amber-500" />,
-  },
-  {
-    id: 6,
-    type: "message",
-    title: "Direct Message",
-    message: "You received a new message from a potential client asking about your services.",
-    time: "1 week ago",
-    read: true,
-    icon: <MessageSquare className="h-5 w-5 text-blue-500" />,
-  },
-  {
-    id: 7,
-    type: "alert",
-    title: "Analytics Report",
-    message: "Your weekly analytics report is now available. Your engagement rate has increased by 15%.",
-    time: "1 week ago",
-    read: true,
-    icon: <CheckCheck className="h-5 w-5 text-green-500" />,
-  }
-];
+import { useBoom } from "@/contexts/BoomContext";
+import { Bell, CheckCheck, AlertCircle, MessageSquare, Calendar, Check, Filter, Search, Trash2, CheckSquare, Loader, Sparkles } from "lucide-react";
 
 export function NotificationsPage() {
   const { isDarkMode } = useTheme();
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const { announcements, loadingAnnouncements } = useBoom();
+  const [readAnnouncements, setReadAnnouncements] = useState(() => {
+    const saved = localStorage.getItem('readAnnouncements');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const [filter, setFilter] = useState("all"); // all, unread, read
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNotifications, setSelectedNotifications] = useState([]);
+
+  // Save read announcements to localStorage
+  useEffect(() => {
+    localStorage.setItem('readAnnouncements', JSON.stringify([...readAnnouncements]));
+  }, [readAnnouncements]);
+
+  // Helper function to format announcement time
+  const formatAnnouncementTime = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    } else if (diffInHours < 168) {
+      const days = Math.floor(diffInHours / 24);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  // Helper function to get icon for announcement
+  const getAnnouncementIcon = (title) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('maintenance') || titleLower.includes('outage')) {
+      return <AlertCircle className="h-5 w-5 text-amber-500" />;
+    } else if (titleLower.includes('feature') || titleLower.includes('update')) {
+      return <Sparkles className="h-5 w-5 text-blue-500" />;
+    } else if (titleLower.includes('security') || titleLower.includes('important')) {
+      return <AlertCircle className="h-5 w-5 text-red-500" />;
+    } else {
+      return <Bell className="h-5 w-5 text-indigo-500" />;
+    }
+  };
   
   const handleMarkAsRead = (id) => {
-    setNotifications(prevNotifications => 
-      prevNotifications.map(notification => 
-        notification.id === id ? {...notification, read: true} : notification
-      )
-    );
+    setReadAnnouncements(prev => new Set([...prev, id]));
   };
   
   const handleMarkAllAsRead = () => {
-    setNotifications(prevNotifications => 
-      prevNotifications.map(notification => ({
-        ...notification,
-        read: true
-      }))
-    );
+    const allAnnouncementIds = announcements.map(announcement => announcement.id);
+    setReadAnnouncements(new Set(allAnnouncementIds));
   };
   
   const toggleSelectNotification = (id) => {
@@ -102,43 +69,48 @@ export function NotificationsPage() {
   };
   
   const handleSelectAll = () => {
-    if (selectedNotifications.length === filteredNotifications.length) {
+    if (selectedNotifications.length === filteredAnnouncements.length) {
       setSelectedNotifications([]);
     } else {
-      setSelectedNotifications(filteredNotifications.map(n => n.id));
+      setSelectedNotifications(filteredAnnouncements.map(n => n.id));
     }
   };
   
   const handleDeleteSelected = () => {
-    setNotifications(prevNotifications => 
-      prevNotifications.filter(notification => !selectedNotifications.includes(notification.id))
-    );
+    // For announcements, we'll just mark them as read instead of deleting
+    setReadAnnouncements(prev => new Set([...prev, ...selectedNotifications]));
     setSelectedNotifications([]);
   };
   
-  // Filter and search notifications
-  const filteredNotifications = notifications.filter(notification => {
+  // Filter and search announcements
+  const filteredAnnouncements = announcements.filter(announcement => {
+    // Only show active announcements
+    if (announcement.status !== 'active') return false;
+    
+    const isRead = readAnnouncements.has(announcement.id);
     const matchesFilter = 
       filter === "all" || 
-      (filter === "unread" && !notification.read) || 
-      (filter === "read" && notification.read);
+      (filter === "unread" && !isRead) || 
+      (filter === "read" && isRead);
       
     const matchesSearch = 
-      notification.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      notification.message.toLowerCase().includes(searchQuery.toLowerCase());
+      announcement.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      announcement.message.toLowerCase().includes(searchQuery.toLowerCase());
       
     return matchesFilter && matchesSearch;
   });
   
-  const unreadCount = notifications.filter(notification => !notification.read).length;
+  const unreadCount = announcements.filter(announcement => 
+    announcement.status === 'active' && !readAnnouncements.has(announcement.id)
+  ).length;
   
   return (
-    <div className={`space-y-4 sm:space-y-6 max-w-4xl mx-auto`}>
+    <div className="container mx-auto p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Notifications</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Announcements</h1>
           <p className={`mt-1 text-sm sm:text-base ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            You have {unreadCount} unread {unreadCount === 1 ? 'notification' : 'notifications'}
+            You have {unreadCount} unread {unreadCount === 1 ? 'announcement' : 'announcements'}
           </p>
         </div>
         <div className="flex gap-2 mt-2 sm:mt-0">
@@ -255,21 +227,26 @@ export function NotificationsPage() {
           )}
         </div>
         
-        {/* Notifications list */}
+        {/* Announcements list */}
         <div className="space-y-2 sm:space-y-3">
-          {filteredNotifications.length === 0 ? (
+          {loadingAnnouncements ? (
+            <div className="p-4 text-center">
+              <Loader className="h-6 w-6 animate-spin mx-auto text-indigo-600" />
+              <p className="text-sm text-gray-500 mt-2">Loading announcements...</p>
+            </div>
+          ) : filteredAnnouncements.length === 0 ? (
             <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
               <Bell className="mx-auto h-8 w-8 mb-2 opacity-50" />
-              <p>No notifications found</p>
+              <p>No announcements found</p>
               {searchQuery && <p className="text-xs sm:text-sm mt-1">Try changing your search query</p>}
               {filter !== "all" && <p className="text-xs sm:text-sm mt-1">Try changing your filter</p>}
             </div>
           ) : (
-            filteredNotifications.map(notification => (
+            filteredAnnouncements.map(announcement => (
               <div 
-                key={notification.id} 
+                key={announcement.id} 
                 className={`flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg ${
-                  !notification.read ? (
+                  !readAnnouncements.has(announcement.id) ? (
                     isDarkMode ? 'bg-indigo-900/20' : 'bg-indigo-50/60'
                   ) : (
                     isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'
@@ -280,8 +257,8 @@ export function NotificationsPage() {
                   <div className="flex items-center">
                     <input 
                       type="checkbox" 
-                      checked={selectedNotifications.includes(notification.id)}
-                      onChange={() => toggleSelectNotification(notification.id)}
+                      checked={selectedNotifications.includes(announcement.id)}
+                      onChange={() => toggleSelectNotification(announcement.id)}
                       className={`h-3.5 sm:h-4 w-3.5 sm:w-4 rounded mr-2 sm:mr-3 ${
                         isDarkMode 
                           ? 'bg-gray-700 border-gray-600 checked:bg-indigo-600 focus:ring-indigo-600' 
@@ -289,32 +266,28 @@ export function NotificationsPage() {
                       } focus:ring-offset-0 focus:outline-none focus:ring-1`}
                     />
                     <span className={`flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full ${
-                      notification.type === 'alert' 
-                        ? (isDarkMode ? 'bg-green-900/20' : 'bg-green-100') 
-                        : notification.type === 'warning'
-                          ? (isDarkMode ? 'bg-amber-900/20' : 'bg-amber-100')
-                          : (isDarkMode ? 'bg-blue-900/20' : 'bg-blue-100')
+                      isDarkMode ? 'bg-indigo-900/20' : 'bg-indigo-100'
                     }`}>
-                      {notification.icon}
+                      {getAnnouncementIcon(announcement.title)}
                     </span>
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <h3 className={`font-semibold text-sm sm:text-base truncate ${!notification.read && 'font-bold'}`}>
-                      {notification.title}
+                    <h3 className={`font-semibold text-sm sm:text-base truncate ${!readAnnouncements.has(announcement.id) && 'font-bold'}`}>
+                      {announcement.title}
                     </h3>
                     <span className="text-xs text-gray-500 mt-0.5 sm:mt-0">
-                      {notification.time}
+                      {formatAnnouncementTime(announcement.created_at)}
                     </span>
                   </div>
                   <p className="text-xs sm:text-sm mt-1 text-gray-600 dark:text-gray-300 line-clamp-2">
-                    {notification.message}
+                    {announcement.message}
                   </p>
                   <div className="flex justify-end sm:justify-start mt-2">
-                    {!notification.read && (
+                    {!readAnnouncements.has(announcement.id) && (
                       <button 
-                        onClick={() => handleMarkAsRead(notification.id)}
+                        onClick={() => handleMarkAsRead(announcement.id)}
                         className={`text-xs sm:text-sm font-medium ${
                           isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'
                         }`}

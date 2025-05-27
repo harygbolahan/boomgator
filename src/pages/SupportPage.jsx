@@ -1,31 +1,108 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useBoom } from "@/contexts/BoomContext";
+import { toast } from "react-toastify";
 
 export function SupportPage() {
-  const [activeTab, setActiveTab] = useState("documentation");
+  const { 
+    tickets, 
+    loadingTickets, 
+    ticketsError, 
+    getAllTickets, 
+    createTicket, 
+    replyToTicket 
+  } = useBoom();
+  
+  const [activeTab, setActiveTab] = useState("tickets");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [showCreateTicket, setShowCreateTicket] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  
+  // New ticket form state
+  const [newTicket, setNewTicket] = useState({
+    subject: "",
+    message: ""
+  });
+  
+  // Load tickets on component mount
+  useEffect(() => {
+    if (activeTab === "tickets") {
+      getAllTickets();
+    }
+  }, [activeTab, getAllTickets]);
+  
+  // Filter tickets based on search query
+  const filteredTickets = tickets.filter(ticket =>
+    ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ticket.message.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const handleCreateTicket = async (e) => {
+    e.preventDefault();
+    
+    if (!newTicket.subject.trim() || !newTicket.message.trim()) {
+      toast.error("Please fill in both subject and message");
+      return;
+    }
+    
+    const result = await createTicket(newTicket);
+    if (result) {
+      setNewTicket({ subject: "", message: "" });
+      setShowCreateTicket(false);
+    }
+  };
+  
+  const handleReplyToTicket = async (e) => {
+    e.preventDefault();
+    
+    if (!replyText.trim()) {
+      toast.error("Please enter a reply message");
+      return;
+    }
+    
+    const result = await replyToTicket(selectedTicket.id, replyText);
+    if (result) {
+      setReplyText("");
+      // Update the selected ticket with new replies
+      const updatedTickets = await getAllTickets();
+      const updatedTicket = updatedTickets.find(t => t.id === selectedTicket.id);
+      if (updatedTicket) {
+        setSelectedTicket(updatedTicket);
+      }
+    }
+  };
+  
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "resolved":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "closed":
+        return "bg-gray-100 text-gray-800 border-gray-200";
+      default:
+        return "bg-blue-100 text-blue-800 border-blue-200";
+    }
+  };
+  
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
   
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Help & Support</h2>
         <p className="text-muted-foreground">
-          Find answers to your questions or contact our support team.
+          Manage your support tickets.
         </p>
-      </div>
-      
-      {/* Search bar */}
-      <div className="relative">
-        <input
-          type="search"
-          placeholder="Search for help articles..."
-          className="w-full p-3 pl-12 border rounded-lg bg-background"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <div className="absolute left-4 top-3.5">
-          🔍
-        </div>
       </div>
       
       {/* Tab navigation */}
@@ -46,6 +123,292 @@ export function SupportPage() {
           ))}
         </nav>
       </div>
+      
+      {/* Support Tickets Tab */}
+      {activeTab === "tickets" && (
+        <div className="space-y-6"> 
+          {!selectedTicket ? (
+            <>
+              {/* Tickets Header */}
+                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                 <div className="relative flex-1 max-w-md">
+                   <input
+                     type="search"
+                     placeholder="Search tickets..."
+                     className="w-full p-3 pl-12 border rounded-lg bg-background"
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                   />
+                   <div className="absolute left-4 top-3.5">
+                     🔍
+                   </div>
+                 </div>
+                 <div className="flex gap-2">
+                   <Button 
+                     variant="outline"
+                     onClick={getAllTickets}
+                     disabled={loadingTickets}
+                   >
+                     {loadingTickets ? "Refreshing..." : "🔄 Refresh"}
+                   </Button>
+                   <Button 
+                     onClick={() => setShowCreateTicket(true)}
+                     className="whitespace-nowrap"
+                   >
+                     Create New Ticket
+                   </Button>
+                 </div>
+               </div>
+              
+              {/* Create Ticket Modal */}
+              {showCreateTicket && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-card rounded-xl shadow-lg border max-w-md w-full p-6">
+                    <h3 className="text-lg font-medium mb-4">Create New Support Ticket</h3>
+                    
+                    <form onSubmit={handleCreateTicket} className="space-y-4">
+                      <div>
+                        <label htmlFor="subject" className="block text-sm font-medium mb-1">
+                          Subject
+                        </label>
+                        <input
+                          id="subject"
+                          type="text"
+                          className="w-full p-2 border rounded-lg bg-background"
+                          placeholder="Brief description of your issue"
+                          value={newTicket.subject}
+                          onChange={(e) => setNewTicket(prev => ({ ...prev, subject: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="message" className="block text-sm font-medium mb-1">
+                          Message
+                        </label>
+                        <textarea
+                          id="message"
+                          rows={4}
+                          className="w-full p-2 border rounded-lg bg-background"
+                          placeholder="Please describe your issue in detail..."
+                          value={newTicket.message}
+                          onChange={(e) => setNewTicket(prev => ({ ...prev, message: e.target.value }))}
+                          required
+                        ></textarea>
+                      </div>
+                      
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setShowCreateTicket(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={loadingTickets}>
+                          {loadingTickets ? "Creating..." : "Create Ticket"}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+              
+              {/* Tickets List */}
+              <div className="bg-card rounded-xl shadow-sm border">
+                <div className="p-6 border-b">
+                  <h3 className="text-lg font-medium">Your Support Tickets</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''} found
+                  </p>
+                </div>
+                
+                {loadingTickets ? (
+                  <div className="p-6 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="text-muted-foreground mt-2">Loading tickets...</p>
+                  </div>
+                ) : ticketsError ? (
+                  <div className="p-6 text-center">
+                    <p className="text-red-500">Error: {ticketsError}</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={getAllTickets}
+                      className="mt-2"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : filteredTickets.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <p className="text-muted-foreground">No tickets found</p>
+                    <Button 
+                      onClick={() => setShowCreateTicket(true)}
+                      className="mt-2"
+                    >
+                      Create Your First Ticket
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {filteredTickets.map((ticket) => (
+                      <div 
+                        key={ticket.id}
+                        className="p-6 hover:bg-accent/50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedTicket(ticket)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-medium">{ticket.subject}</h4>
+                              <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(ticket.status)}`}>
+                                {ticket.status}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                              {ticket.message}
+                            </p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Ticket #{ticket.id}</span>
+                              <span>Created: {formatDate(ticket.created_at)}</span>
+                              {ticket.replies && ticket.replies.length > 0 && (
+                                <span>{ticket.replies.length} repl{ticket.replies.length === 1 ? 'y' : 'ies'}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs text-muted-foreground">
+                              {ticket.updated_at ? `Updated: ${formatDate(ticket.updated_at)}` : 'No updates'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            /* Ticket Detail View */
+            <div className="space-y-6">
+                             <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-4">
+                   <Button 
+                     variant="outline" 
+                     onClick={() => setSelectedTicket(null)}
+                   >
+                     ← Back to Tickets
+                   </Button>
+                   <div className="flex items-center gap-2">
+                     <h3 className="text-lg font-medium">Ticket #{selectedTicket.id}</h3>
+                     <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(selectedTicket.status)}`}>
+                       {selectedTicket.status}
+                     </span>
+                   </div>
+                 </div>
+                 <Button 
+                   variant="outline" 
+                   onClick={async () => {
+                     const updatedTickets = await getAllTickets();
+                     const updatedTicket = updatedTickets.find(t => t.id === selectedTicket.id);
+                     if (updatedTicket) {
+                       setSelectedTicket(updatedTicket);
+                     }
+                   }}
+                   disabled={loadingTickets}
+                 >
+                   {loadingTickets ? "Refreshing..." : "🔄 Refresh"}
+                 </Button>
+               </div>
+              
+              <div className="bg-card rounded-xl shadow-sm border">
+                <div className="p-6 border-b">
+                  <h4 className="font-medium text-lg mb-2">{selectedTicket.subject}</h4>
+                  <div className="text-sm text-muted-foreground">
+                    Created: {formatDate(selectedTicket.created_at)}
+                    {selectedTicket.updated_at && (
+                      <span className="ml-4">Updated: {formatDate(selectedTicket.updated_at)}</span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <div className="space-y-6">
+                    {/* Original Message */}
+                    <div className="bg-accent/20 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-sm font-medium">
+                          You
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDate(selectedTicket.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm">{selectedTicket.message}</p>
+                    </div>
+                    
+                                         {/* Replies */}
+                     {selectedTicket.replies && selectedTicket.replies.map((reply) => {
+                       const isAdmin = reply.reply_by === 'Admin';
+                       return (
+                         <div key={reply.id} className={`rounded-lg p-4 ${
+                           isAdmin 
+                             ? 'bg-blue-50 border border-blue-200' 
+                             : 'bg-accent/10'
+                         }`}>
+                           <div className="flex items-center gap-2 mb-2">
+                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                               isAdmin 
+                                 ? 'bg-blue-500 text-white' 
+                                 : 'bg-secondary text-foreground'
+                             }`}>
+                               {isAdmin ? 'A' : 'You'}
+                             </div>
+                             <span className={`text-sm font-medium ${
+                               isAdmin ? 'text-blue-700' : 'text-foreground'
+                             }`}>
+                               {isAdmin ? 'Admin' : 'You'}
+                             </span>
+                             <span className="text-sm text-muted-foreground">
+                               {formatDate(reply.created_at)}
+                             </span>
+                           </div>
+                           <p className="text-sm">{reply.reply}</p>
+                         </div>
+                       );
+                     })}
+                    
+                    {/* Reply Form */}
+                    {selectedTicket.status !== 'closed' && (
+                      <form onSubmit={handleReplyToTicket} className="space-y-4">
+                        <div>
+                          <label htmlFor="reply" className="block text-sm font-medium mb-1">
+                            Add Reply
+                          </label>
+                          <textarea
+                            id="reply"
+                            rows={3}
+                            className="w-full p-3 border rounded-lg bg-background"
+                            placeholder="Type your reply here..."
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            required
+                          ></textarea>
+                        </div>
+                        <div className="flex justify-end">
+                          <Button type="submit" disabled={loadingTickets}>
+                            {loadingTickets ? "Sending..." : "Send Reply"}
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Documentation Tab */}
       {activeTab === "documentation" && (
@@ -185,138 +548,15 @@ export function SupportPage() {
           </div>
         </div>
       )}
-      
-      {/* Contact Tab */}
-      {activeTab === "contact" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-card rounded-xl shadow-sm border p-6">
-              <h3 className="text-lg font-medium mb-6">Contact Support</h3>
-              
-              <form className="space-y-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium mb-1">
-                    Your Name
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    className="w-full p-2 border rounded-lg bg-background"
-                    placeholder="John Doe"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    className="w-full p-2 border rounded-lg bg-background"
-                    placeholder="john@example.com"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="subject" className="block text-sm font-medium mb-1">
-                    Subject
-                  </label>
-                  <select
-                    id="subject"
-                    className="w-full p-2 border rounded-lg bg-background"
-                  >
-                    <option value="">Select a subject</option>
-                    <option value="account">Account Issues</option>
-                    <option value="billing">Billing Questions</option>
-                    <option value="technical">Technical Support</option>
-                    <option value="feature">Feature Request</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium mb-1">
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    rows={5}
-                    className="w-full p-2 border rounded-lg bg-background"
-                    placeholder="Please describe your issue or question in detail..."
-                  ></textarea>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button>Submit Ticket</Button>
-                </div>
-              </form>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="bg-card rounded-xl shadow-sm border p-6">
-                <h3 className="text-lg font-medium mb-4">Support Hours</h3>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Monday - Friday:</span>
-                    <span>9:00 AM - 8:00 PM EST</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Saturday:</span>
-                    <span>10:00 AM - 6:00 PM EST</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Sunday:</span>
-                    <span>Closed</span>
-                  </div>
-                </div>
-                
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    We typically respond to support tickets within 24 hours during business days.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="bg-card rounded-xl shadow-sm border p-6">
-                <h3 className="text-lg font-medium mb-4">Community Support</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium">Facebook Community Group</h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Join our Facebook group to connect with other users, share tips, and get help.
-                    </p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      Join Group
-                    </Button>
-                  </div>
-                  
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium">Knowledge Base</h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Browse our extensive knowledge base for tutorials and guides.
-                    </p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      Visit Knowledge Base
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 // Sample data
 const tabs = [
-  { id: "documentation", name: "Documentation" },
-  { id: "faqs", name: "FAQs" },
-  { id: "contact", name: "Contact Support" }
+  { id: "tickets", name: "Support Tickets" },
+  // { id: "documentation", name: "Documentation" },
+  // { id: "faqs", name: "FAQs" }
 ];
 
 const documentationCategories = [

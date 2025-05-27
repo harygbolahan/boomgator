@@ -93,11 +93,6 @@ export function Login() {
             </div>
           )}
           
-          {error && (
-            <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

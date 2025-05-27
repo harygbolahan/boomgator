@@ -27,6 +27,7 @@ import LiveMessaging from "@/pages/LiveMessaging"
 import PagesManagementPage from "@/pages/PagesManagementPage"
 import Flow from "@/pages/Flow"
 import { AIContentCreatorPage } from "@/pages/AIContentCreatorPage"
+import { WalletPage } from "@/pages/WalletPage"
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"
@@ -36,17 +37,17 @@ import { BoomProvider } from "@/contexts/BoomContext"
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
-  
+
   // Show loading state while auth is initializing
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
-  
+
   if (!isAuthenticated) {
     // Redirect to login page with return url
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
-  
+
   return children;
 };
 
@@ -57,25 +58,25 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            
+
             {/* Auth Routes */}
             <Route path="/auth">
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
               <Route path="forgot-password" element={<ForgotPassword />} />
             </Route>
-            
+
             {/* Redirect old routes to new auth routes */}
             <Route path="/login" element={<Navigate to="/auth/login" replace />} />
             <Route path="/signup" element={<Navigate to="/auth/register" replace />} />
-            
+
             {/* Setup Guide Route */}
             <Route path="/setup-guide" element={
               <ProtectedRoute>
                 <SetupGuidePage />
               </ProtectedRoute>
             } />
-            
+
             {/* Protected routes */}
             <Route element={
               <ProtectedRoute>
@@ -104,8 +105,9 @@ function App() {
               <Route path="/subscription" element={<SubscriptionPage />} />
               <Route path="/ai-content-creator" element={<AIContentCreatorPage />} />
               <Route path="/flow" element={<Flow />} />
+              <Route path="/wallet" element={<WalletPage />} />
             </Route>
-            
+
             {/* 404 Not Found */}
             <Route path="*" element={
               <ProtectedRoute>
@@ -113,8 +115,8 @@ function App() {
               </ProtectedRoute>
             } />
           </Routes>
-          
-          <ToastContainer 
+
+          <ToastContainer
             position="top-right"
             autoClose={3000}
             hideProgressBar={false}

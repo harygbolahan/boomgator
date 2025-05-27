@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBoom } from "@/contexts/BoomContext";
 import { 
   LayoutDashboard, 
   Share2, 
@@ -28,63 +29,21 @@ import {
   Package,
   Sparkles
 } from "lucide-react";
-import { PageNavigation } from "../PageNavigation";
 import { UserMenu } from "./UserMenu";
 
 const navItems = [
-  { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-  {name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" />},
-  { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-5 h-5" /> },
-  { name: "AI Content Creator", path: "/ai-content-creator", icon: <Sparkles className="w-5 h-5" /> },
-  { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" /> },
-  { name: "Messenger Broadcast", path: "/messenger-broadcast", icon: <MessageSquare className="w-5 h-5" /> },
-  { name: "Pages Management", path: "/pages-management", icon: <Layers className="w-5 h-5" /> },
-  { name: "Live Messaging", path: "/live-messaging", icon: <MessageSquare className="w-5 h-5" /> },
-  { name: "Subscription", path: "/subscription", icon: <Package className="w-5 h-5" /> },
-  { name: "Account", path: "/account", icon: <UserCircle className="w-5 h-5" /> },
-  { name: "Support", path: "/support", icon: <LifeBuoy className="w-5 h-5" /> },
-  { name: "Logout", path: "/logout", icon: <LogOut className="w-5 h-5" /> },
-
-];
-
-// Fake notifications data
-const notifications = [
-  {
-    id: 1,
-    type: "alert",
-    title: "Account Connected",
-    message: "Your Instagram account has been successfully connected.",
-    time: "5 minutes ago",
-    read: false,
-    icon: <CheckCheck className="h-5 w-5 text-green-500" />,
-  },
-  {
-    id: 2,
-    type: "warning",
-    title: "Automation Paused",
-    message: "The DM responder automation has been paused due to API limits.",
-    time: "2 hours ago",
-    read: false,
-    icon: <AlertCircle className="h-5 w-5 text-amber-500" />,
-  },
-  {
-    id: 3,
-    type: "message",
-    title: "New Comment",
-    message: "Someone commented on your latest post: 'Great content! Looking forward to more.'",
-    time: "Yesterday",
-    read: true,
-    icon: <MessageSquare className="h-5 w-5 text-blue-500" />,
-  },
-  {
-    id: 4,
-    type: "alert",
-    title: "Post Scheduled",
-    message: "Your post has been scheduled for tomorrow at 10:00 AM.",
-    time: "2 days ago",
-    read: true,
-    icon: <Calendar className="h-5 w-5 text-indigo-500" />,
-  }
+  { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+  { name: "Content Scheduler", path: "/content-scheduler", icon: <Clock className="w-4 h-4" /> },
+  { name: "AI Content Creator", path: "/ai-content-creator", icon: <Sparkles className="w-4 h-4" /> },
+  { name: "Pages Management", path: "/pages-management", icon: <Layers className="w-4 h-4" /> },
+  { name: "Messenger Broadcast", path: "/messenger-broadcast", icon: <MessageSquare className="w-4 h-4" /> },
+  { name: "Live Messaging", path: "/live-messaging", icon: <MessageSquare className="w-4 h-4" /> },
+  { name: "Automation", path: "/automation", icon: <Zap className="w-4 h-4" /> },
+  { name: "Integrations", path: "/integrations", icon: <Link2 className="w-4 h-4" /> },
+  { name: "Subscription", path: "/subscription", icon: <Package className="w-4 h-4" /> },
+  { name: "Account", path: "/account", icon: <UserCircle className="w-4 h-4" /> },
+  { name: "Support", path: "/support", icon: <LifeBuoy className="w-4 h-4" /> },
+  { name: "Logout", path: "/logout", icon: <LogOut className="w-4 h-4" /> },
 ];
 
 export function Layout() {
@@ -92,10 +51,14 @@ export function Layout() {
   const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { logout } = useAuth();
+  const { announcements, loadingAnnouncements } = useBoom();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [userNotifications, setUserNotifications] = useState(notifications);
+  const [readAnnouncements, setReadAnnouncements] = useState(() => {
+    const saved = localStorage.getItem('readAnnouncements');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const [isPageLoading, setIsPageLoading] = useState(false);
   
   const toggleSidebar = () => {
@@ -132,20 +95,59 @@ export function Layout() {
   };
   
   const markAllAsRead = () => {
-    setUserNotifications(userNotifications.map(notification => ({
-      ...notification,
-      read: true
-    })));
+    const allAnnouncementIds = announcements.map(announcement => announcement.id);
+    setReadAnnouncements(new Set(allAnnouncementIds));
   };
   
   const markAsRead = (id) => {
-    setUserNotifications(userNotifications.map(notification => 
-      notification.id === id ? {...notification, read: true} : notification
-    ));
+    setReadAnnouncements(prev => new Set([...prev, id]));
   };
   
-  const unreadCount = userNotifications.filter(notification => !notification.read).length;
+  const getUnreadCount = () => {
+    return announcements.filter(announcement => 
+      announcement.status === 'active' && !readAnnouncements.has(announcement.id)
+    ).length;
+  };
   
+  const unreadCount = getUnreadCount();
+
+  // Helper function to format announcement time
+  const formatAnnouncementTime = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    } else if (diffInHours < 168) {
+      const days = Math.floor(diffInHours / 24);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  // Helper function to get icon for announcement
+  const getAnnouncementIcon = (title) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('maintenance') || titleLower.includes('outage')) {
+      return <AlertCircle className="h-5 w-5 text-amber-500" />;
+    } else if (titleLower.includes('feature') || titleLower.includes('update')) {
+      return <Sparkles className="h-5 w-5 text-blue-500" />;
+    } else if (titleLower.includes('security') || titleLower.includes('important')) {
+      return <AlertCircle className="h-5 w-5 text-red-500" />;
+    } else {
+      return <Bell className="h-5 w-5 text-indigo-500" />;
+    }
+  };
+  
+  // Save read announcements to localStorage
+  useEffect(() => {
+    localStorage.setItem('readAnnouncements', JSON.stringify([...readAnnouncements]));
+  }, [readAnnouncements]);
+
   // Add loading state on route change
   useEffect(() => {
     setIsPageLoading(true);
@@ -179,61 +181,80 @@ export function Layout() {
         
         {/* Sidebar - mobile */}
         <aside 
-          className={`fixed inset-y-0 left-0 z-50 w-[80%] sm:w-72 transform transition-transform duration-300 ease-in-out md:hidden flex flex-col ${
+          className={`fixed inset-y-0 left-0 z-50 w-[80%] sm:w-72 transform transition-all duration-300 ease-in-out md:hidden flex flex-col ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          } ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow-lg overflow-hidden`}
+          } ${isDarkMode 
+            ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-gray-700/50' 
+            : 'bg-gradient-to-b from-white via-gray-50/50 to-white border-gray-200/50'
+          } backdrop-blur-xl shadow-2xl overflow-hidden`}
         >
           <div className="flex flex-col h-full">
-            <div className={`flex items-center justify-between p-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-b`}>
-              <Link to="/dashboard" className="flex items-center gap-2">
-                <div className="h-8 w-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-md flex items-center justify-center text-white font-bold text-xl">
+            {/* Header with improved design */}
+            <div className={`flex items-center justify-between p-4 ${isDarkMode ? 'border-gray-700/30' : 'border-gray-200/30'} border-b backdrop-blur-sm`}>
+              <Link to="/dashboard" className="flex items-center gap-2 group">
+                <div className="h-8 w-8 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform duration-200">
                   B
                 </div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                   Boomgator
                 </h1>
               </Link>
               <button 
                 onClick={() => setMobileMenuOpen(false)}
-                className={`p-2 rounded-lg ${isDarkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  isDarkMode 
+                    ? 'text-gray-400 hover:bg-gray-700/50 hover:text-white' 
+                    : 'text-gray-500 hover:bg-gray-100/70 hover:text-gray-700'
+                }`}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
+            {/* Navigation with improved styling */}
             <div className="flex-1 overflow-y-auto py-4">
-              <nav className="px-4 space-y-2">
-                {navItems.map((item) => (
+              <nav className="px-3 space-y-1">
+                {navItems.map((item, index) => (
                   <button
                     key={item.path}
                     onClick={() => handleNavItemClick(item)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${
                       location.pathname === item.path 
                         ? `${isDarkMode 
-                          ? 'bg-indigo-900/40 text-indigo-400' 
-                          : 'bg-indigo-50 text-indigo-700'} font-medium` 
+                          ? 'bg-gradient-to-r from-indigo-900/50 to-purple-900/50 text-indigo-400 border border-indigo-500/20' 
+                          : 'bg-gradient-to-r from-indigo-50 to-purple-50/50 text-indigo-700 border border-indigo-200/50'
+                        } font-semibold shadow-lg` 
                         : `${isDarkMode 
-                          ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
-                    }`}
+                          ? 'text-gray-300 hover:bg-gradient-to-r hover:from-gray-700/50 hover:to-gray-600/50 hover:text-white' 
+                          : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-100/80 hover:to-gray-50/80 hover:text-gray-900'
+                        } hover:shadow-md`
+                    } ${item.path === '/logout' ? (isDarkMode ? 'hover:from-red-900/30 hover:to-red-800/30 text-red-400 hover:text-red-300' : 'hover:from-red-50/80 hover:to-red-100/80 text-red-600 hover:text-red-700') : ''}`}
                   >
-                    {item.icon}
-                    <span>{item.name}</span>
+                    <div className={`transition-transform duration-200 ${location.pathname === item.path ? 'scale-110' : 'group-hover:scale-105'}`}>
+                      {item.icon}
+                    </div>
+                    <span className="text-sm font-medium">{item.name}</span>
+                    {location.pathname === item.path && (
+                      <div className="absolute right-2 w-1.5 h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse"></div>
+                    )}
                   </button>
                 ))}
               </nav>
             </div>
 
-            <div className={`p-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-t`}>
+            {/* Footer with improved theme toggle */}
+            <div className={`p-3 ${isDarkMode ? 'border-gray-700/30' : 'border-gray-200/30'} border-t backdrop-blur-sm`}>
               <button
                 onClick={toggleDarkMode}
-                className={`w-full px-4 py-3 rounded-lg flex items-center gap-3 ${
+                className={`w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-all duration-200 group ${
                   isDarkMode 
-                    ? 'text-yellow-300 hover:bg-gray-700' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                    ? 'text-amber-300 hover:bg-gradient-to-r hover:from-gray-700/50 hover:to-gray-600/50 hover:text-amber-200' 
+                    : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-100/80 hover:to-gray-50/80 hover:text-gray-800'
+                } hover:shadow-md`}
               >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                <div className="transition-transform duration-200 group-hover:scale-110">
+                  {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </div>
                 <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
               </button>
             </div>
@@ -243,19 +264,22 @@ export function Layout() {
         {/* Sidebar - desktop */}
         <aside 
           className={`${
-            isSidebarCollapsed ? 'w-20' : 'w-72'
+            isSidebarCollapsed ? 'w-16' : 'w-64'
           } hidden md:block fixed h-screen ${
-            isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-          } border-r shadow-sm overflow-y-auto z-20 flex-shrink-0`}
+            isDarkMode 
+              ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-gray-700/30' 
+              : 'bg-gradient-to-b from-white via-gray-50/30 to-white border-gray-200/50'
+          } border-r backdrop-blur-xl shadow-2xl overflow-y-auto z-20 flex-shrink-0 transition-all duration-300`}
         >
           <div className="flex flex-col h-full">
-            <div className={`p-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-b flex justify-between items-center`}>
-              <Link to="/dashboard" className="flex items-center gap-2 overflow-hidden">
-                <div className="h-8 w-8 flex-shrink-0 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-md flex items-center justify-center text-white font-bold text-xl">
+            {/* Header with improved design */}
+            <div className={`p-4 ${isDarkMode ? 'border-gray-700/30' : 'border-gray-200/30'} border-b flex justify-between items-center backdrop-blur-sm`}>
+              <Link to="/dashboard" className="flex items-center gap-2 overflow-hidden group">
+                <div className="h-8 w-8 flex-shrink-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform duration-200">
                   B
                 </div>
                 {!isSidebarCollapsed && (
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent whitespace-nowrap">
                     Boomgator
                   </h1>
                 )}
@@ -263,46 +287,63 @@ export function Layout() {
               <button 
                 onClick={toggleSidebar}
                 className={`${
-                  isDarkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'
-                } p-2 rounded-lg`}
+                  isDarkMode ? 'text-gray-400 hover:bg-gray-700/50 hover:text-white' : 'text-gray-500 hover:bg-gray-100/70 hover:text-gray-700'
+                } p-2 rounded-lg transition-all duration-200`}
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="w-4 h-4" />
               </button>
             </div>
 
+            {/* Navigation with improved styling */}
             <div className="flex-1 overflow-y-auto py-4">
-              <nav className={`px-3 space-y-2 ${isSidebarCollapsed ? 'text-center' : ''}`}>
-                {navItems.map((item) => (
+              <nav className={`px-3 space-y-1 ${isSidebarCollapsed ? 'text-center' : ''}`}>
+                {navItems.map((item, index) => (
                   <button
                     key={item.path}
                     onClick={() => handleNavItemClick(item)}
-                    className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-lg transition-colors ${
+                    className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-all duration-200 group relative ${
                       location.pathname === item.path 
                         ? `${isDarkMode 
-                          ? 'bg-indigo-900/40 text-indigo-400' 
-                          : 'bg-indigo-50 text-indigo-700'} font-medium` 
+                          ? 'bg-gradient-to-r from-indigo-900/50 to-purple-900/50 text-indigo-400 border border-indigo-500/20' 
+                          : 'bg-gradient-to-r from-indigo-50 to-purple-50/50 text-indigo-700 border border-indigo-200/50'
+                        } font-semibold shadow-lg` 
                         : `${isDarkMode 
-                          ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
-                    } ${item.path === '/logout' ? (isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700') : ''}`}
+                          ? 'text-gray-300 hover:bg-gradient-to-r hover:from-gray-700/50 hover:to-gray-600/50 hover:text-white' 
+                          : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-100/80 hover:to-gray-50/80 hover:text-gray-900'
+                        } hover:shadow-md`
+                    } ${item.path === '/logout' ? (isDarkMode ? 'hover:from-red-900/30 hover:to-red-800/30 text-red-400 hover:text-red-300' : 'hover:from-red-50/80 hover:to-red-100/80 text-red-600 hover:text-red-700') : ''}`}
+                    title={isSidebarCollapsed ? item.name : ''}
                   >
-                    {item.icon}
-                    {!isSidebarCollapsed && <span>{item.name}</span>}
+                    <div className={`transition-transform duration-200 ${location.pathname === item.path ? 'scale-110' : 'group-hover:scale-105'}`}>
+                      {item.icon}
+                    </div>
+                    {!isSidebarCollapsed && (
+                      <>
+                        <span className="text-sm font-medium">{item.name}</span>
+                        {location.pathname === item.path && (
+                          <div className="absolute right-2 w-1.5 h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse"></div>
+                        )}
+                      </>
+                    )}
                   </button>
                 ))}
               </nav>
             </div>
 
-            <div className={`p-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-t`}>
+            {/* Footer with improved theme toggle */}
+            <div className={`p-3 ${isDarkMode ? 'border-gray-700/30' : 'border-gray-200/30'} border-t backdrop-blur-sm`}>
               <button
                 onClick={toggleDarkMode}
-                className={`w-full ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-lg flex items-center ${
+                className={`w-full ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg flex items-center text-sm font-medium transition-all duration-200 group ${
                   isDarkMode 
-                    ? 'text-yellow-300 hover:bg-gray-700' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                    ? 'text-amber-300 hover:bg-gradient-to-r hover:from-gray-700/50 hover:to-gray-600/50 hover:text-amber-200' 
+                    : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-100/80 hover:to-gray-50/80 hover:text-gray-800'
+                } hover:shadow-md`}
+                title={isSidebarCollapsed ? (isDarkMode ? 'Light Mode' : 'Dark Mode') : ''}
               >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                <div className="transition-transform duration-200 group-hover:scale-110">
+                  {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </div>
                 {!isSidebarCollapsed && <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>}
               </button>
             </div>
@@ -311,7 +352,7 @@ export function Layout() {
         
         {/* Main content area */}
         <div className={`flex flex-col flex-1 transition-all duration-300 ease-in-out ${
-          isSidebarCollapsed ? 'md:ml-20' : 'md:ml-72' // Adjust margin based on sidebar state
+          isSidebarCollapsed ? 'md:ml-16' : 'md:ml-64' // Adjust margin based on sidebar state
         }`}>
           
           {/* Header */}
@@ -354,7 +395,7 @@ export function Layout() {
                   // Add click outside handling if needed, or rely on the overlay below
                 >
                   <div className={`flex justify-between items-center p-3 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-b`}>
-                    <h3 className="text-sm font-medium">Notifications</h3>
+                    <h3 className="text-sm font-medium">Announcements</h3>
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllAsRead}
@@ -365,42 +406,53 @@ export function Layout() {
                     )}
                   </div>
                   <div className="max-h-80 overflow-y-auto">
-                    {userNotifications.length === 0 ? (
-                      <p className={`p-4 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No new notifications</p>
+                    {loadingAnnouncements ? (
+                      <div className="p-4 text-center">
+                        <Loader className="h-6 w-6 animate-spin mx-auto text-indigo-600" />
+                        <p className="text-sm text-gray-500 mt-2">Loading announcements...</p>
+                      </div>
+                    ) : announcements.length === 0 ? (
+                      <div className="p-4 text-center">
+                        <Bell className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No announcements</p>
+                      </div>
                     ) : (
-                      userNotifications.map((notification) => (
-                        <div 
-                          key={notification.id} 
-                          className={`flex items-start p-3 gap-3 transition-colors ${notification.read ? '' : (isDarkMode ? 'bg-gray-700/50' : 'bg-blue-50')} ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-                        >
-                          <div className="flex-shrink-0 mt-1">{notification.icon}</div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{notification.title}</p>
-                            <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{notification.message}</p>
-                            <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{notification.time}</p>
+                      announcements
+                        .filter(announcement => announcement.status === 'active')
+                        .map((announcement) => (
+                          <div 
+                            key={announcement.id} 
+                            className={`flex items-start p-3 gap-3 transition-colors ${readAnnouncements.has(announcement.id) ? '' : (isDarkMode ? 'bg-gray-700/50' : 'bg-blue-50')} ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                          >
+                            <div className="flex-shrink-0 mt-1">{getAnnouncementIcon(announcement.title)}</div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{announcement.title}</p>
+                              <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{announcement.message}</p>
+                              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatAnnouncementTime(announcement.created_at)}</p>
+                            </div>
+                            {!readAnnouncements.has(announcement.id) && (
+                              <button 
+                                onClick={() => markAsRead(announcement.id)}
+                                className="p-1 -m-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                aria-label="Mark as read"
+                              >
+                                <span className="block h-2 w-2 rounded-full bg-blue-500"></span>
+                              </button>
+                            )}
                           </div>
-                          {!notification.read && (
-                            <button 
-                              onClick={() => markAsRead(notification.id)}
-                              className="p-1 -m-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              aria-label="Mark as read"
-                            >
-                              <span className="block h-2 w-2 rounded-full bg-blue-500"></span>
-                            </button>
-                          )}
-                        </div>
-                      ))
+                        ))
                     )}
                   </div>
                   <div className={`p-3 text-center ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-t`}>
                     <button
                       onClick={() => {
-                        navigate('/notifications');
+                        console.log('View all announcements clicked');
                         setNotificationsOpen(false);
+                        navigate('/notifications');
                       }}
                       className={`text-sm ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                     >
-                      View all notifications
+                      View all announcements
                     </button>
                   </div>
                 </div>
@@ -421,8 +473,7 @@ export function Layout() {
             />
           )}
           
-          {/* Page navigation for development - keep at bottom */}
-          <PageNavigation />
+
         </div>
       </div>
     </div>

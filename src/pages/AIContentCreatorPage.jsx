@@ -229,59 +229,74 @@ export function AIContentCreatorPage() {
   };
   
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">AI Content Creator</h1>
-          <p className="text-muted-foreground">
-            Generate professional content for social media and blogs with AI assistance
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex items-center justify-between mb-8">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              AI Content Creator
+            </h1>
+            <p className="text-slate-600 text-lg">
+              Generate professional content for social media and blogs with AI assistance
+            </p>
+          </div>
+          
+          <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg flex items-center gap-2 px-4 py-2 text-sm font-medium">
+            <Sparkles className="w-4 h-4" />
+            <span>AI Powered</span>
+          </Badge>
         </div>
-        
-        <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
-          <Sparkles className="w-3 h-3" />
-          <span>AI Powered</span>
-        </Badge>
-      </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6 grid grid-cols-3 w-full max-w-md mx-auto">
-          <TabsTrigger value="post">Create Content</TabsTrigger>
+        <TabsList className="mb-8 grid grid-cols-1 w-full max-w-xs mx-auto bg-white/80 backdrop-blur-sm shadow-lg border-0 p-1">
+          <TabsTrigger 
+            value="post" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+          >
+            Create Content
+          </TabsTrigger>
           {/* <TabsTrigger value="library">Content Library</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
         </TabsList>
         
         <TabsContent value="post">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 space-y-6">
-              <Card>
-                <CardHeader className="pb-3">
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-t-lg">
                   <div className="flex justify-between items-center">
-                    <CardTitle>Content Parameters</CardTitle>
-                    <Button variant="ghost" size="sm" onClick={clearForm} title="Reset form">
+                    <CardTitle className="text-xl font-semibold text-slate-800">Content Parameters</CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={clearForm} 
+                      title="Reset form"
+                      className="hover:bg-white/60 transition-colors"
+                    >
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                   </div>
-                  <CardDescription>
+                  <CardDescription className="text-slate-600 mt-1">
                     Customize your AI-generated content
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="topic">Topic or Idea</Label>
+                <CardContent className="space-y-6 p-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="topic" className="text-sm font-medium text-slate-700">Topic or Idea</Label>
                     <Textarea 
                       id="topic" 
-                      placeholder="What would you like to post about?"
-                      rows={2}
+                      placeholder="What would you like to post about? Be specific for better results..."
+                      rows={3}
                       value={topic}
                       onChange={(e) => setTopic(e.target.value)}
+                      className="resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="platform">Platform</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="platform" className="text-sm font-medium text-slate-700">Platform</Label>
                     <Select value={platform} onValueChange={setPlatform}>
-                      <SelectTrigger id="platform" className="w-full">
+                      <SelectTrigger id="platform" className="w-full focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
                         <SelectValue placeholder="Select platform" />
                       </SelectTrigger>
                       <SelectContent>
@@ -297,11 +312,11 @@ export function AIContentCreatorPage() {
                     </Select>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="industry">Industry</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="industry" className="text-sm font-medium text-slate-700">Industry</Label>
                       <Select value={industry} onValueChange={setIndustry}>
-                        <SelectTrigger id="industry">
+                        <SelectTrigger id="industry" className="focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
                           <SelectValue placeholder="Select industry" />
                         </SelectTrigger>
                         <SelectContent>
@@ -314,22 +329,23 @@ export function AIContentCreatorPage() {
                       </Select>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="audience">Target Audience</Label>
+                    <div className="space-y-3">
+                      <Label htmlFor="audience" className="text-sm font-medium text-slate-700">Target Audience</Label>
                       <Input
                         id="audience"
                         placeholder="Who is this content for?"
                         value={targetAudience}
                         onChange={(e) => setTargetAudience(e.target.value)}
+                        className="focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                       />
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="tone">Content Tone</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="tone" className="text-sm font-medium text-slate-700">Content Tone</Label>
                       <Select value={tone} onValueChange={setTone}>
-                        <SelectTrigger id="tone">
+                        <SelectTrigger id="tone" className="focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
                           <SelectValue placeholder="Select tone" />
                         </SelectTrigger>
                         <SelectContent>
@@ -342,10 +358,10 @@ export function AIContentCreatorPage() {
                       </Select>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="voiceStyle">Voice Style</Label>
+                    <div className="space-y-3">
+                      <Label htmlFor="voiceStyle" className="text-sm font-medium text-slate-700">Voice Style</Label>
                       <Select value={voiceStyle} onValueChange={setVoiceStyle}>
-                        <SelectTrigger id="voiceStyle">
+                        <SelectTrigger id="voiceStyle" className="focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
                           <SelectValue placeholder="Select voice style" />
                         </SelectTrigger>
                         <SelectContent>
@@ -359,9 +375,9 @@ export function AIContentCreatorPage() {
                     </div>
                   </div>
                   
-                  <div className="space-y-4 pt-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="hashtags">Include Hashtags</Label>
+                  <div className="space-y-6 pt-6 border-t border-slate-200">
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <Label htmlFor="hashtags" className="text-sm font-medium text-slate-700">Include Hashtags</Label>
                       <Switch
                         id="hashtags"
                         checked={includeHashtags}
@@ -369,9 +385,9 @@ export function AIContentCreatorPage() {
                       />
                     </div>
                     
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="cta">Include Call-to-Action</Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <Label htmlFor="cta" className="text-sm font-medium text-slate-700">Include Call-to-Action</Label>
                         <Switch
                           id="cta"
                           checked={includeCTA}
@@ -385,14 +401,15 @@ export function AIContentCreatorPage() {
                           placeholder="Custom call-to-action (optional)"
                           value={customCTA}
                           onChange={(e) => setCustomCTA(e.target.value)}
+                          className="focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                       )}
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="pt-6">
                   <Button
-                    className="w-full"
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-12 text-base font-medium"
                     onClick={handleGenerateContent}
                     disabled={isGenerating || !topic}
                   >
@@ -412,9 +429,9 @@ export function AIContentCreatorPage() {
               </Card>
               
               {error && (
-                <Alert variant="destructive" className="bg-red-50 border-red-200">
+                <Alert variant="destructive" className="bg-red-50 border-red-200 shadow-lg animate-in fade-in-50 slide-in-from-top-1">
                   <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <AlertDescription className="text-red-700">
+                  <AlertDescription className="text-red-700 font-medium">
                     {error}
                   </AlertDescription>
                 </Alert>
@@ -422,47 +439,53 @@ export function AIContentCreatorPage() {
             </div>
             
             <div className="lg:col-span-2">
-              <Card className="h-full">
-                <CardHeader>
+              <Card className="h-full shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-t-lg">
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle>Generated Content</CardTitle>
-                      <CardDescription>
+                      <CardTitle className="text-xl font-semibold text-slate-800">Generated Content</CardTitle>
+                      <CardDescription className="text-slate-600 mt-1">
                         {generatedContent 
                           ? `Created on ${formatDate(generatedContent.createdAt)}` 
                           : "Your content will appear here"}
                       </CardDescription>
                     </div>
                     {generatedContent && (
-                      <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+                      <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md flex items-center gap-2 px-3 py-1">
                         {getPlatformIcon(generatedContent.platform)}
                         <span className="capitalize ml-1">{generatedContent.platform}</span>
                       </Badge>
                     )}
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   {isGenerating ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <div className="animate-pulse flex space-x-2 mb-4">
-                        <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-                        <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-                        <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <div className="relative mb-6">
+                        <div className="w-16 h-16 border-4 border-blue-200 rounded-full animate-spin">
+                          <div className="w-4 h-4 bg-blue-600 rounded-full absolute top-0 left-1/2 transform -translate-x-1/2"></div>
+                        </div>
                       </div>
-                      <p className="text-muted-foreground">
+                      <p className="text-slate-600 text-lg font-medium mb-2">
                         Creating your {platformOptions.find(p => p.id === platform)?.name || 'social media'} content with AI...
+                      </p>
+                      <p className="text-slate-500 text-sm">
+                        This may take a few seconds
                       </p>
                     </div>
                   ) : generatedContent ? (
                     <div className="space-y-4">
-                      <div className="bg-muted p-4 rounded-lg min-h-40 whitespace-pre-wrap">
+                      <div className="bg-gradient-to-br from-slate-50 to-blue-50 p-6 rounded-xl border border-slate-200 min-h-48 whitespace-pre-wrap text-slate-700 leading-relaxed shadow-inner">
                         {generatedContent.content}
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Sparkles className="w-12 h-12 text-blue-500 mb-4 opacity-50" />
-                      <p className="text-muted-foreground max-w-md">
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
+                        <Sparkles className="w-10 h-10 text-blue-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-slate-800 mb-2">Ready to Create</h3>
+                      <p className="text-slate-600 max-w-md">
                         Fill out the content parameters and click "Generate Content" to create
                         AI-optimized social media content
                       </p>
@@ -470,22 +493,36 @@ export function AIContentCreatorPage() {
                   )}
                 </CardContent>
                 {generatedContent && (
-                  <CardFooter className="flex justify-between flex-wrap gap-2">
-                    <div className="flex gap-2 flex-wrap">
-                      <Button variant="outline" size="sm" onClick={handleCopyToClipboard}>
+                  <CardFooter className="flex justify-between flex-wrap gap-4 pt-6 bg-slate-50/50 rounded-b-lg">
+                    <div className="flex gap-3 flex-wrap">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleCopyToClipboard}
+                        className="hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                      >
                         <Copy className="mr-2 h-4 w-4" />
                         Copy
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                      >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </Button>
-                      <Button variant="outline" size="sm" onClick={handleSaveContent}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleSaveContent}
+                        className="hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                      >
                         <Bookmark className="mr-2 h-4 w-4" />
                         {saveStatus === "saving" ? "Saving..." : "Save"}
                       </Button>
                     </div>
-                    <Button>
+                    <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md hover:shadow-lg transition-all">
                       <Send className="mr-2 h-4 w-4" />
                       Post to {platformOptions.find(p => p.id === generatedContent.platform)?.name || 'Platform'}
                     </Button>
@@ -494,18 +531,18 @@ export function AIContentCreatorPage() {
               </Card>
               
               {saveStatus === "saved" && (
-                <Alert className="mt-4 bg-green-50 border-green-200">
+                <Alert className="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg animate-in fade-in-50 slide-in-from-top-1">
                   <Check className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-700">
+                  <AlertDescription className="text-green-700 font-medium">
                     Content saved to your library
                   </AlertDescription>
                 </Alert>
               )}
               
               {saveStatus === "copied" && (
-                <Alert className="mt-4 bg-green-50 border-green-200">
+                <Alert className="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg animate-in fade-in-50 slide-in-from-top-1">
                   <Check className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-700">
+                  <AlertDescription className="text-green-700 font-medium">
                     Content copied to clipboard
                   </AlertDescription>
                 </Alert>
@@ -615,6 +652,7 @@ export function AIContentCreatorPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

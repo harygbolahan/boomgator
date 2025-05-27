@@ -57,6 +57,11 @@ export const BoomProvider = ({ children }) => {
   const [loadingServices, setLoadingServices] = useState(false);
   const [servicesError, setServicesError] = useState(null);
 
+  // Announcements data
+  const [announcements, setAnnouncements] = useState([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
+  const [announcementsError, setAnnouncementsError] = useState(null);
+
   // Chat data
   const [chats, setChats] = useState([]);
   const [currentChat, setCurrentChat] = useState([]);
@@ -73,6 +78,11 @@ export const BoomProvider = ({ children }) => {
   const [packageError, setPackageError] = useState(null);
   const [subscribingPackage, setSubscribingPackage] = useState(false);
   const [subscribeError, setSubscribeError] = useState(null);
+
+  // Support tickets data
+  const [tickets, setTickets] = useState([]);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const [ticketsError, setTicketsError] = useState(null);
 
   // API instance with auth token
   const api = useCallback(
@@ -183,6 +193,40 @@ export const BoomProvider = ({ children }) => {
       setLoadingWallet(false);
     }
   }, [isAuthenticated, api]);
+
+  const fundWallet = useCallback(async (amount) => {
+    if (!isAuthenticated) return null;
+    
+    setLoadingWallet(true);
+    setWalletError(null);
+    
+    try {
+      const response = await axios.post('https://ai.loomsuite.com/api/checkout', {
+        amount: parseFloat(amount),
+        product_name: "Top up wallet"
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Log the response as requested
+      console.log('Payment checkout response:', response.data);
+      console.log('Full response object:', response);
+      
+      toast.success('Payment checkout initiated successfully');
+      return response.data;
+    } catch (error) {
+      console.error('Payment checkout error:', error);
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error initiating payment checkout";
+      setWalletError(errorMsg);
+      toast.error(`Error initiating payment: ${errorMsg}`);
+      return null;
+    } finally {
+      setLoadingWallet(false);
+    }
+  }, [isAuthenticated, token]);
   
   // =====================
   // DASHBOARD FUNCTIONS
@@ -674,6 +718,30 @@ export const BoomProvider = ({ children }) => {
   }, [isAuthenticated, api]);
 
   // =====================
+  // ANNOUNCEMENTS FUNCTIONS
+  // =====================
+  
+  const getAnnouncements = useCallback(async () => {
+    if (!isAuthenticated) return [];
+    
+    setLoadingAnnouncements(true);
+    setAnnouncementsError(null);
+    
+    try {
+      const response = await api().get('/announcements');
+      setAnnouncements(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading announcements";
+      setAnnouncementsError(errorMsg);
+      console.error('Error loading announcements:', errorMsg);
+      return [];
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  }, [isAuthenticated, api]);
+
+  // =====================
   // SUBSCRIPTION FUNCTIONS
   // =====================
   
@@ -956,11 +1024,94 @@ export const BoomProvider = ({ children }) => {
     }
   }, [isAuthenticated, api]);
   
+  // =====================
+  // SUPPORT TICKET FUNCTIONS
+  // =====================
+  
+  const getAllTickets = useCallback(async () => {
+    if (!isAuthenticated) return [];
+    
+    setLoadingTickets(true);
+    setTicketsError(null);
+    
+    try {
+      const response = await api().get('/tickets');
+      setTickets(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading tickets";
+      setTicketsError(errorMsg);
+      toast.error(`Error loading tickets: ${errorMsg}`);
+      return [];
+    } finally {
+      setLoadingTickets(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  const createTicket = useCallback(async (ticketData) => {
+    if (!isAuthenticated) return null;
+    
+    setLoadingTickets(true);
+    setTicketsError(null);
+    
+    try {
+      const response = await api().post('/tickets/add', {
+        subject: ticketData.subject,
+        message: ticketData.message
+      });
+      
+      if (response.data.status === 'success') {
+        await getAllTickets(); // Refresh the tickets list
+        toast.success('Ticket created successfully');
+        return response.data;
+      } else {
+        throw new Error("Failed to create ticket");
+      }
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error creating ticket";
+      setTicketsError(errorMsg);
+      toast.error(`Error creating ticket: ${errorMsg}`);
+      return null;
+    } finally {
+      setLoadingTickets(false);
+    }
+  }, [isAuthenticated, api, getAllTickets]);
+  
+  const replyToTicket = useCallback(async (ticketId, reply) => {
+    if (!isAuthenticated || !ticketId || !reply) return null;
+    
+    setLoadingTickets(true);
+    setTicketsError(null);
+    
+    try {
+      const response = await api().post('/tickets/reply', {
+        ticket_id: ticketId,
+        reply: reply
+      });
+      
+      if (response.data.message) {
+        await getAllTickets(); // Refresh the tickets list
+        toast.success('Reply added successfully');
+        return response.data;
+      } else {
+        throw new Error("Failed to add reply");
+      }
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error adding reply";
+      setTicketsError(errorMsg);
+      toast.error(`Error adding reply: ${errorMsg}`);
+      return null;
+    } finally {
+      setLoadingTickets(false);
+    }
+  }, [isAuthenticated, api, getAllTickets]);
+  
   // General loading state
   const isLoading = loadingAccount || loadingWallet || loadingHome || loadingAutomations || 
                     loadingScheduledPosts || loadingCommentReplies || loadingPlatforms || 
                     loadingPages || loadingServices || loadingChats || loadingCurrentChat ||
-                    loadingPackages || loadingCurrentPackage || subscribingPackage;
+                    loadingPackages || loadingCurrentPackage || subscribingPackage || 
+                    loadingAnnouncements || loadingTickets;
   
   // Refresh all data
   const refreshAll = useCallback(() => {
@@ -974,12 +1125,14 @@ export const BoomProvider = ({ children }) => {
     getPlatforms();
     getPages();
     getAutoReplyServices();
+    getAnnouncements();
+    getAllTickets();
     // Note: 
     // - Not calling getAllChats here as it requires pageId parameter
     // - Not calling getAllCommentReplies here as it requires post_id parameter
   }, [getAccount, getWallet, getHomeData, getAllAutomations, getScheduledPosts, 
-      getPlatforms, getPages, getAutoReplyServices, 
-      getAllPackages, getUserPackage]);
+      getPlatforms, getPages, getAutoReplyServices, getAnnouncements,
+      getAllPackages, getUserPackage, getAllTickets]);
     
   // Initialize the data when auth token changes
   useEffect(() => {
@@ -1008,6 +1161,7 @@ export const BoomProvider = ({ children }) => {
     loadingWallet,
     walletError,
     getWallet,
+    fundWallet,
     
     // Dashboard
     homeData,
@@ -1056,11 +1210,11 @@ export const BoomProvider = ({ children }) => {
     getCommentRepliesByCommentId,
     addCommentReply,
     
-    // Auto Reply Services
-    autoReplyServices,
-    loadingServices,
-    servicesError,
-    getAutoReplyServices,
+    // Announcements
+    announcements,
+    loadingAnnouncements,
+    announcementsError,
+    getAnnouncements,
     
     // Subscriptions
     availablePackages,
@@ -1093,11 +1247,19 @@ export const BoomProvider = ({ children }) => {
     // Content Generation
     generateContent,
     
-    // Subscribers
-    getSubscribers,
-    getSubscribersByLabel,
-    deleteSubscriber,
-    sendBroadcast,
+      // Subscribers
+  getSubscribers,
+  getSubscribersByLabel,
+  deleteSubscriber,
+  sendBroadcast,
+  
+  // Support Tickets
+  tickets,
+  loadingTickets,
+  ticketsError,
+  getAllTickets,
+  createTicket,
+  replyToTicket,
   };
   
   return <BoomContext.Provider value={value}>{children}</BoomContext.Provider>;
