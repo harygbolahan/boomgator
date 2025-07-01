@@ -20,6 +20,7 @@ export const SubscriptionPage = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   
+  
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -148,43 +149,20 @@ export const SubscriptionPage = () => {
             <h2 className="text-2xl font-bold mb-1 text-gray-800 dark:text-gray-200">Available Plans</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">Compare and choose the right plan for your needs</p>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {availablePackages?.trial && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {availablePackages && Object.entries(availablePackages).map(([packageType, packages]) => (
                 <PackageCard 
-                  title="Trial"
-                  icon={<Clock className="w-5 h-5 text-blue-500 dark:text-blue-400" />}
-                  packages={availablePackages.trial}
-                  onSubscribe={() => handleSubscribe('trial')}
+                  key={packageType}
+                  title={packageType.charAt(0).toUpperCase() + packageType.slice(1)}
+                  icon={<Package className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />}
+                  packages={packages || []}
+                  onSubscribe={() => handleSubscribe(packageType)}
                   isSubscribing={subscribingPackage}
-                  isCurrentPackage={currentPackage?.package === 'TRIAL PACKAGE'}
-                  colorClass="border-blue-200 dark:border-blue-900/50 hover:border-blue-300"
-                />
-              )}
-              
-              {availablePackages?.plus && (
-                <PackageCard 
-                  title="Plus"
-                  icon={<Sparkles className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />}
-                  packages={availablePackages.plus}
-                  onSubscribe={() => handleSubscribe('plus')}
-                  isSubscribing={subscribingPackage}
-                  isCurrentPackage={currentPackage?.package === 'PLUS PACKAGE'}
+                  isCurrentPackage={currentPackage?.package === `${packageType.toUpperCase()} PACKAGE`}
+                  recommended={packageType === 'pro'}
                   colorClass="border-indigo-200 dark:border-indigo-900/50 hover:border-indigo-300"
                 />
-              )}
-              
-              {availablePackages?.pro && (
-                <PackageCard 
-                  title="Pro"
-                  icon={<Crown className="w-5 h-5 text-purple-500 dark:text-purple-400" />}
-                  packages={availablePackages.pro}
-                  onSubscribe={() => handleSubscribe('pro')}
-                  isSubscribing={subscribingPackage}
-                  isCurrentPackage={currentPackage?.package === 'PRO PACKAGE'}
-                  recommended
-                  colorClass="border-purple-200 dark:border-purple-900/50 hover:border-purple-300"
-                />
-              )}
+              ))}
             </div>
           </div>
           
@@ -225,10 +203,24 @@ const PackageCard = ({
   recommended = false,
   colorClass = ""
 }) => {
-  // Find the first package to get the price and validity
+  // Get the price and validity from the first package (assuming all packages in a plan have the same price)
   const firstPackage = packages[0];
   const price = firstPackage?.price || 0;
   const validity = firstPackage?.validity || 'monthly';
+  
+  // Collect all unique services from all packages
+  const allServices = [];
+  packages.forEach(pkg => {
+    if (pkg.service && Array.isArray(pkg.service)) {
+      pkg.service.forEach(service => {
+        // Check if service already exists to avoid duplicates
+        const existingService = allServices.find(s => s.id === service.id);
+        if (!existingService) {
+          allServices.push(service);
+        }
+      });
+    }
+  });
   
   return (
     <Card className={`relative hover:shadow-lg transition-all duration-300 ${colorClass} ${recommended ? 'border-2 border-purple-400 dark:border-purple-500 shadow-md transform hover:-translate-y-1' : 'border'} ${isCurrentPackage ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
@@ -263,48 +255,58 @@ const PackageCard = ({
       
       <CardContent className="pt-4">
         <h4 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">What's included:</h4>
-        <ul className="space-y-4">
-          {packages.map((pkg, index) => (
-            <li key={index} className="text-sm">
-              <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-medium">
-                <Check className="w-4 h-4 text-green-600 dark:text-green-500 flex-shrink-0" />
-                {pkg.service[0]?.service || 'Unknown Service'}
-              </div>
-              <div className="ml-6 mt-1 grid grid-cols-3 gap-2 text-xs">
-                {pkg.service[0]?.limit_daily > 0 && (
-                  <div className="text-gray-600 dark:text-gray-400">
-                    <span className="font-medium">{pkg.service[0].limit_daily}</span> daily
-                  </div>
-                )}
-                {pkg.service[0]?.limit_weekly > 0 && (
-                  <div className="text-gray-600 dark:text-gray-400">
-                    <span className="font-medium">{pkg.service[0].limit_weekly}</span> weekly
-                  </div>
-                )}
-                {pkg.service[0]?.limit_monthly > 0 && (
-                  <div className="text-gray-600 dark:text-gray-400">
-                    <span className="font-medium">{pkg.service[0].limit_monthly}</span> monthly
-                  </div>
-                )}
-              </div>
-              {index < packages.length - 1 && <Separator className="my-3" />}
-            </li>
-          ))}
-        </ul>
+        {allServices.length > 0 ? (
+          <ul className="space-y-4">
+            {allServices.map((service, index) => (
+              <li key={service.id} className="text-sm">
+                <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-medium">
+                  <Check className="w-4 h-4 text-green-600 dark:text-green-500 flex-shrink-0" />
+                  {service.service}
+                </div>
+                <div className="ml-6 mt-1 grid grid-cols-3 gap-2 text-xs">
+                  {service.limit_daily > 0 && (
+                    <div className="text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">{service.limit_daily}</span> daily
+                    </div>
+                  )}
+                  {service.limit_weekly > 0 && (
+                    <div className="text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">{service.limit_weekly}</span> weekly
+                    </div>
+                  )}
+                  {service.limit_monthly > 0 && (
+                    <div className="text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">{service.limit_monthly}</span> monthly
+                    </div>
+                  )}
+                </div>
+                {index < allServices.length - 1 && <Separator className="my-3" />}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No services available</p>
+            <p className="text-xs">Coming soon...</p>
+          </div>
+        )}
       </CardContent>
       
       <CardFooter className="pt-2">
         <Button 
           className={`w-full ${recommended ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700' : ''}`}
           onClick={onSubscribe}
-          disabled={isSubscribing || isCurrentPackage}
-          variant={isCurrentPackage ? "outline" : "default"}
+          disabled={isSubscribing || isCurrentPackage || allServices.length === 0}
+          variant={isCurrentPackage ? "outline" : allServices.length === 0 ? "outline" : "default"}
         >
           {isSubscribing 
             ? 'Subscribing...' 
             : isCurrentPackage 
               ? 'Current Plan'
-              : 'Subscribe Now'
+              : allServices.length === 0
+                ? 'Coming Soon'
+                : 'Subscribe Now'
           }
         </Button>
       </CardFooter>

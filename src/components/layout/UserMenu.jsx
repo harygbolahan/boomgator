@@ -9,7 +9,8 @@ import {
   SettingsIcon, 
   BellIcon, 
   CreditCardIcon,
-  PackageIcon
+  PackageIcon,
+  WalletIcon
 } from "lucide-react"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { cn } from "@/lib/utils"
@@ -18,20 +19,15 @@ import { useAuth } from "@/contexts/AuthContext"
 export function UserMenu() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
   
   const handleLogout = () => {
     try {
-      // Call the auth context logout function
       logout();
-      
-      // Clear localStorage
       localStorage.clear();
-      
-      // Use replace instead of navigate to prevent going back to dashboard
       navigate("/auth/login", { replace: true });
     } catch (error) {
       console.error('Error during logout:', error);
-      // Force navigation to login page even if there's an error
       localStorage.clear();
       navigate("/auth/login", { replace: true });
     }
@@ -40,6 +36,7 @@ export function UserMenu() {
   const handleNavigate = (path, e) => {
     e.preventDefault();
     navigate(path);
+    setIsOpen(false);
   };
 
   // Get user initials for avatar placeholder
@@ -53,128 +50,128 @@ export function UserMenu() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <ThemeToggle />
       
-      <Popover>
-        <PopoverTrigger className="flex items-center gap-2">
-          <div className="relative">
-            {/* If we had a user profile image, we'd use it here */}
-            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-200 font-medium">
-              {getUserInitials()}
-            </div>
-            <span className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-400 border border-white" />
-          </div>
-          <span className="hidden md:block text-sm">{user?.first_name || "User"} {user?.last_name || ""}</span>
-          <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
-        </PopoverTrigger>
-        
-        <PopoverContent className="w-[280px] p-0 rounded-lg shadow-lg border" align="right">
-          {/* User profile header */}
-          <div className="bg-blue-600 dark:bg-blue-800 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center text-white font-medium">
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <button className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-100/70 dark:hover:bg-gray-800/50 transition-all duration-200 group">
+            <div className="relative">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm shadow-lg group-hover:scale-105 transition-all duration-200">
                 {getUserInitials()}
               </div>
-              <div>
-                <h4 className="font-medium text-white">{user?.first_name || "User"} {user?.last_name || ""}</h4>
-                <p className="text-xs text-blue-100">{user?.email || "user@example.com"}</p>
+              <div className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-400 border-2 border-white dark:border-gray-900 shadow-sm" />
+            </div>
+            <div className="hidden md:block text-left">
+              <p className="text-sm font-medium">{user?.first_name || "User"} {user?.last_name || ""}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Online</p>
+            </div>
+            <ChevronDownIcon className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </PopoverTrigger>
+        
+        <PopoverContent className="w-80 p-0 rounded-2xl shadow-2xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl" align="end">
+          {/* User profile header */}
+          {/* <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-6 rounded-t-2xl">
+            <div className="flex items-center space-x-4">
+              <div className="h-14 w-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                {getUserInitials()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-white text-lg truncate">
+                  {user?.first_name || "User"} {user?.last_name || ""}
+                </h4>
+                <p className="text-sm text-white/80 truncate">{user?.email || "user@example.com"}</p>
                 {user?.wallet !== undefined && (
-                  <div className="mt-1">
+                  <div className="mt-2 flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg">
+                    <WalletIcon className="h-3 w-3 text-white/90" />
                     <span className="text-xs text-white font-medium">
-                      Balance: ₦{user.wallet.toFixed(2)}
+                      Balance: ₦{user.wallet.toLocaleString()}
                     </span>
                   </div>
                 )}
               </div>
             </div>
-          </div>
+          </div> */}
           
           {/* Menu items */}
-          <div className="py-2 bg-white dark:bg-gray-800">
-            <div className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-              ACCOUNT
+          {/* <div className="py-2">
+            <div className="px-4 py-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Account
+              </h3>
             </div>
             
-            <a
-              href="/account"
+            <MenuItem
+              icon={<User2Icon className="h-4 w-4" />}
+              label="Your Profile"
+              description="Manage your account settings"
               onClick={(e) => handleNavigate('/account', e)}
-              className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-              tabIndex={0}
-              aria-label="Your Profile"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleNavigate('/account', e);
-                }
-              }}
-            >
-              <User2Icon className="mr-3 h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Your Profile
-            </a>
+            />
             
-            
-            
-            <a
-              href="/subscription"
+            <MenuItem
+              icon={<PackageIcon className="h-4 w-4" />}
+              label="Subscriptions"
+              description="View and manage plans"
               onClick={(e) => handleNavigate('/subscription', e)}
-              className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-              tabIndex={0}
-              aria-label="Subscriptions"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleNavigate('/subscription', e);
-                }
-              }}
-            >
-              <PackageIcon className="mr-3 h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Subscriptions
-            </a>
+            />
             
-            <div className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-              SUPPORT
+            <div className="my-2 border-t border-gray-200/50 dark:border-gray-700/50"></div>
+            
+            <div className="px-4 py-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Support
+              </h3>
             </div>
             
-            <a
-              href="/support"
+            <MenuItem
+              icon={<LifeBuoyIcon className="h-4 w-4" />}
+              label="Help Center"
+              description="Get help and support"
               onClick={(e) => handleNavigate('/support', e)}
-              className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-              tabIndex={0}
-              aria-label="Help Center"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleNavigate('/support', e);
-                }
-              }}
-            >
-              <LifeBuoyIcon className="mr-3 h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Help Center
-            </a>
+            />
             
-            <a
-              href="/auth/login"
+            <div className="my-2 border-t border-gray-200/50 dark:border-gray-700/50"></div>
+            
+            <MenuItem
+              icon={<LogOutIcon className="h-4 w-4" />}
+              label="Sign out"
+              description="Log out of your account"
               onClick={(e) => {
                 e.preventDefault();
                 handleLogout();
               }}
-              className="flex items-center px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-              tabIndex={0}
-              aria-label="Sign out"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleLogout();
-                }
-              }}
-            >
-              <LogOutIcon className="mr-3 h-4 w-4 text-red-600 dark:text-red-400" />
-              Sign out
-            </a>
-          </div>
+              variant="danger"
+            />
+          </div> */}
         </PopoverContent>
       </Popover>
     </div>
   )
+}
+
+// Helper component for menu items
+function MenuItem({ icon, label, description, onClick, variant = "default" }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 group text-left ${
+        variant === "danger"
+          ? "hover:bg-red-50/80 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
+          : "hover:bg-gray-100/80 dark:hover:bg-gray-800/50 text-gray-700 dark:text-gray-200"
+      }`}
+    >
+      <div className={`transition-all duration-200 group-hover:scale-105 ${
+        variant === "danger"
+          ? "text-red-600 dark:text-red-400"
+          : "text-indigo-600 dark:text-indigo-400"
+      }`}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm">{label}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{description}</p>
+      </div>
+    </button>
+  );
 }

@@ -775,10 +775,12 @@ export const BoomProvider = ({ children }) => {
     
     try {
       const response = await api().get('/subscriptions/me');
+      console.log('user package',response);
       setCurrentPackage(response.data);
       return response.data;
     } catch (error) {
       const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading your subscription package";
+      console.log('user package error',errorMsg);
       setPackageError(errorMsg);
       toast.error(`Error loading your subscription package: ${errorMsg}`);
       return null;
