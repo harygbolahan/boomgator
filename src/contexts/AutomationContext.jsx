@@ -1,4 +1,9 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import axios from 'axios';
+import { useAuth } from './AuthContext';
+import { toast } from 'react-toastify';
+
+const API_BASE_URL = 'https://ai.boomgator.com/api/ai';
 
 // Mock data for development
 const MOCK_POSTS = [
@@ -77,6 +82,25 @@ const MOCK_TEMPLATES = [
 const AutomationContext = createContext(null);
 
 export const AutomationProvider = ({ children }) => {
+  const { isAuthenticated, token } = useAuth();
+  
+  // Live data state
+  const [platforms, setPlatforms] = useState([]);
+  const [loadingPlatforms, setLoadingPlatforms] = useState(false);
+  const [platformsError, setPlatformsError] = useState(null);
+  
+  const [autoReplyServices, setAutoReplyServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+  const [servicesError, setServicesError] = useState(null);
+  
+  const [pages, setPages] = useState([]);
+  const [loadingPages, setLoadingPages] = useState(false);
+  const [pagesError, setPagesError] = useState(null);
+  
+  const [pagePosts, setPagePosts] = useState([]);
+  const [loadingPagePosts, setLoadingPagePosts] = useState(false);
+  const [pagePostsError, setPagePostsError] = useState(null);
+
   // Main automation state
   const [automationState, setAutomationState] = useState({
     platform: null, // 'instagram' | 'facebook'
@@ -106,6 +130,151 @@ export const AutomationProvider = ({ children }) => {
   // UI state
   const [currentStep, setCurrentStep] = useState('platform'); // 'platform' | 'template' | 'editor'
   const [isLoading, setIsLoading] = useState(false);
+
+  // API instance with auth token
+  const api = useCallback(
+    (customConfig = {}) => {
+      const instance = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...customConfig.headers,
+        },
+        ...customConfig,
+      });
+
+      // Add response interceptor to handle unauthorized errors
+      instance.interceptors.response.use(
+        (response) => response,
+        (error) => {
+          const isAuthError = error.response?.status === 401 || 
+                            error.response?.data?.message === 'Unauthenticated.' ||
+                            error.response?.data?.message?.toLowerCase().includes('unauthenticated');
+                            
+          if (isAuthError) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            localStorage.removeItem('isLoggedIn');
+            
+            if (typeof window !== 'undefined') {
+              toast.error('Your session has expired. Please login again.');
+              window.location.href = '/auth/login';
+            }
+          }
+          return Promise.reject(error);
+        }
+      );
+
+      return instance;
+    },
+    [token]
+  );
+
+  // =====================
+  // LIVE API FUNCTIONS
+  // =====================
+  
+  const getPlatforms = useCallback(async () => {
+    if (!isAuthenticated) return [];
+    
+    setLoadingPlatforms(true);
+    setPlatformsError(null);
+    
+    try {
+      const response = await api().get('/platforms');
+      console.log('AutomationContext - getPlatforms response:', response.data);
+      console.log('AutomationContext - getPlatforms full response:', response);
+      setPlatforms(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading platforms";
+      setPlatformsError(errorMsg);
+      console.error('AutomationContext - getPlatforms error:', error);
+      toast.error(`Error loading platforms: ${errorMsg}`);
+      return [];
+    } finally {
+      setLoadingPlatforms(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  const getAutoReplyServices = useCallback(async () => {
+    if (!isAuthenticated) return [];
+    
+    setLoadingServices(true);
+    setServicesError(null);
+    
+    try {
+      const response = await api().get('/subscriptions/autoreply');
+      console.log('AutomationContext - getAutoReplyServices response:', response.data);
+      console.log('AutomationContext - getAutoReplyServices full response:', response);
+      
+      setAutoReplyServices(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading auto reply services";
+      setServicesError(errorMsg);
+      console.error('AutomationContext - getAutoReplyServices error:', error);
+      toast.error(`Error loading auto reply services: ${errorMsg}`);
+      return [];
+    } finally {
+      setLoadingServices(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  const getPages = useCallback(async () => {
+    if (!isAuthenticated) return [];
+    
+    setLoadingPages(true);
+    setPagesError(null);
+    
+    try {
+      const response = await api().get('/platforms/pages');
+      console.log('AutomationContext - getPages response:', response.data);
+      console.log('AutomationContext - getPages full response:', response);
+      setPages(response.data);
+      return response.data;
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error loading pages";
+      setPagesError(errorMsg);
+      console.error('AutomationContext - getPages error:', error);
+      toast.error(`Error loading pages: ${errorMsg}`);
+      return [];
+    } finally {
+      setLoadingPages(false);
+    }
+  }, [isAuthenticated, api]);
+  
+  const getPagePosts = useCallback(async (pageId) => {
+    if (!isAuthenticated) return [];
+    
+    setLoadingPagePosts(true);
+    setPagePostsError(null);
+    
+    try {
+      const response = await api().post('/platforms/pages/post', {
+        page_id: pageId
+      });
+      
+      console.log('AutomationContext - getPagePosts response:', response.data);
+      console.log('AutomationContext - getPagePosts full response:', response);
+      
+      if (Array.isArray(response.data)) {
+        setPagePosts(response.data);
+        return response.data;
+      } else {
+        throw new Error("Failed to fetch page posts");
+      }
+    } catch (error) {
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Failed to load page posts";
+      setPagePostsError(errorMsg);
+      console.error('AutomationContext - getPagePosts error:', error);
+      toast.error(`Error loading page posts: ${errorMsg}`);
+      return [];
+    } finally {
+      setLoadingPagePosts(false);
+    }
+  }, [isAuthenticated, api]);
 
   // Platform selection
   const selectPlatform = useCallback((platform) => {
@@ -250,8 +419,15 @@ export const AutomationProvider = ({ children }) => {
   // Get filtered posts based on selected platform
   const getAvailablePosts = useCallback(() => {
     if (!automationState.platform) return [];
+    
+    // If we have real API posts data, use that instead of mock data
+    if (pagePosts && pagePosts.length > 0) {
+      return pagePosts;
+    }
+    
+    // Fallback to mock data only if no real data is available
     return MOCK_POSTS.filter(post => post.platform === automationState.platform);
-  }, [automationState.platform]);
+  }, [automationState.platform, pagePosts]);
 
   // Get available templates
   const getAvailableTemplates = useCallback(() => {
@@ -306,6 +482,20 @@ export const AutomationProvider = ({ children }) => {
     currentStep,
     isLoading,
     
+    // Live API State
+    platforms,
+    loadingPlatforms,
+    platformsError,
+    autoReplyServices,
+    loadingServices,
+    servicesError,
+    pages,
+    loadingPages,
+    pagesError,
+    pagePosts,
+    loadingPagePosts,
+    pagePostsError,
+    
     // Actions
     selectPlatform,
     selectTemplate,
@@ -318,6 +508,12 @@ export const AutomationProvider = ({ children }) => {
     updatePreviewMode,
     resetAutomation,
     saveAutomation,
+    
+    // Live API Functions
+    getPlatforms,
+    getAutoReplyServices,
+    getPages,
+    getPagePosts,
     
     // Getters
     getAvailablePosts,

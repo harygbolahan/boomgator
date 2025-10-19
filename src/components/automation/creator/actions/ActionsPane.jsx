@@ -2,15 +2,16 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAutomation } from "@/contexts/AutomationContext";
+import ServiceSelector from "./ServiceSelector";
 import PostSelector from "./PostSelector";
 import KeywordSetup from "./KeywordSetup";
 import DMConfiguration from "./DMConfiguration";
 import AdvancedSettings from "./AdvancedSettings";
 import TemplateSpecificSettings from "./TemplateSpecificSettings";
 
-const ActionsPane = () => {
+const ActionsPane = ({ configData, updateConfigData, updateResponseConfig, validateStepConfig, platformInfo, pageInfo, isConfigComplete }) => {
   const { automationState } = useAutomation();
-  const [expandedSection, setExpandedSection] = useState('post');
+  const [expandedSection, setExpandedSection] = useState('service');
 
   const toggleSection = (section) => {
     setExpandedSection(prev => prev === section ? null : section);
@@ -18,34 +19,58 @@ const ActionsPane = () => {
 
   const sections = [
     {
+      id: 'service',
+      title: 'Select Service Type',
+      subtitle: 'Choose how your automation will respond (comment, DM, or both)',
+      component: () => <ServiceSelector 
+        configData={configData}
+        updateConfigData={updateConfigData}
+      />,
+      required: true,
+      completed: !!configData.servicePlatform?.service_id
+    },
+    {
       id: 'post',
       title: 'Select a Post or Reel',
       subtitle: 'Choose the content that will trigger your automation',
-      component: PostSelector,
+      component: () => <PostSelector 
+        configData={configData}
+        updateConfigData={updateConfigData}
+        pageInfo={pageInfo}
+      />,
       required: true,
-      completed: !!automationState.selectedPost
+      completed: !!automationState.selectedPost || !!configData.pagePost
     },
     {
       id: 'keywords',
       title: 'Setup Keywords',
       subtitle: 'Define trigger words that activate the automation',
-      component: KeywordSetup,
+      component: () => <KeywordSetup 
+        configData={configData}
+        updateConfigData={updateConfigData}
+      />,
       required: true,
-      completed: automationState.keywords.length > 0
+      completed: (configData.keywords && configData.keywords.length > 0) || automationState.keywords.length > 0
     },
     {
       id: 'dm',
       title: 'Send a DM',
       subtitle: 'Configure the automated response message',
-      component: DMConfiguration,
+      component: () => <DMConfiguration 
+        configData={configData}
+        updateResponseConfig={updateResponseConfig}
+      />,
       required: true,
-      completed: !!(automationState.dmConfig.message || automationState.dmConfig.image)
+      completed: !!(automationState.dmConfig.message || automationState.dmConfig.image) || !!(configData.responseConfig?.dm_content || configData.responseConfig?.comment_content)
     },
     {
       id: 'template-specific',
       title: 'Template Settings',
       subtitle: 'Advanced options for your selected template',
-      component: TemplateSpecificSettings,
+      component: () => <TemplateSpecificSettings 
+        configData={configData}
+        updateConfigData={updateConfigData}
+      />,
       required: false,
       completed: false
     },
@@ -53,7 +78,10 @@ const ActionsPane = () => {
       id: 'advanced',
       title: 'Advanced Settings',
       subtitle: 'Optional settings for enhanced automation',
-      component: AdvancedSettings,
+      component: () => <AdvancedSettings 
+        configData={configData}
+        updateConfigData={updateConfigData}
+      />,
       required: false,
       completed: false
     }
@@ -133,7 +161,7 @@ const ActionsPane = () => {
                     className="border-t border-gray-200"
                   >
                     <div className="p-4 bg-white max-h-96 overflow-y-auto">
-                      <Component />
+                      {section.component()}
                     </div>
                   </motion.div>
                 )}

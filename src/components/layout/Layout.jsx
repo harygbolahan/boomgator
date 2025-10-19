@@ -39,6 +39,7 @@ const navItems = [
   { name: "AI Content Creator", path: "/ai-content-creator", icon: <Sparkles className="w-5 h-5" />, category: "content" },
   { name: "Pages Management", path: "/pages-management", icon: <Layers className="w-5 h-5" />, category: "management" },
   { name: "Messenger Broadcast", path: "/messenger-broadcast", icon: <MessageSquare className="w-5 h-5" />, category: "messaging" },
+  { name: "Instagram Viral Founder", path: "/instagram-viral-finder", icon: <MessageSquare className="w-5 h-5" />, category: "messaging" },
   { name: "Live Messaging", path: "/live-messaging", icon: <MessageSquare className="w-5 h-5" />, category: "messaging" },
   { name: "Automation", path: "/automation", icon: <Zap className="w-5 h-5" />, category: "automation" },
   { name: "Integrations", path: "/integrations", icon: <Link2 className="w-5 h-5" />, category: "settings" },

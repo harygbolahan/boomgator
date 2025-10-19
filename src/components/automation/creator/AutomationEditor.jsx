@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Settings, Save, Eye } from "lucide-react";
@@ -7,12 +8,19 @@ import MobilePreview from "./preview/MobilePreview";
 import PreviewControls from "./preview/PreviewControls";
 import ActionsPane from "./actions/ActionsPane";
 
-const AutomationEditor = () => {
+const AutomationEditor = ({ 
+  configData, 
+  updateConfigData, 
+  updateResponseConfig,
+  handleSaveAutomation,
+  validateStepConfig,
+  isLoading,
+  pages,
+  loadingPages 
+}) => {
   const { 
     automationState, 
-    setCurrentStep,
-    saveAutomation,
-    isLoading 
+    setCurrentStep
   } = useAutomation();
 
   const handleBack = () => {
@@ -21,10 +29,18 @@ const AutomationEditor = () => {
 
   const handleSave = async () => {
     try {
-      const result = await saveAutomation();
-      if (result.success) {
-        // Handle success (could navigate to automations list)
+      // Validate all configurations before saving
+      const isValid = validateStepConfig && validateStepConfig('editor');
+      
+      if (!isValid) {
+        console.warn('Validation failed, cannot save automation');
+        return;
+      }
+
+      const result = await handleSaveAutomation();
+      if (result?.success) {
         console.log('Automation saved successfully');
+        // Could navigate to automations list or show success message
       }
     } catch (error) {
       console.error('Failed to save automation:', error);
@@ -32,12 +48,24 @@ const AutomationEditor = () => {
   };
 
   const getPlatformInfo = () => {
+    if (configData.servicePlatform) {
+      return {
+        name: configData.servicePlatform.name,
+        icon: configData.servicePlatform.icon,
+        color: configData.servicePlatform.gradient
+      };
+    }
+    
     return automationState.platform === 'instagram' 
       ? { name: 'Instagram', icon: '📷', color: 'from-purple-500 to-pink-500' }
       : { name: 'Facebook', icon: '📘', color: 'from-blue-600 to-blue-700' };
   };
 
   const getTemplateInfo = () => {
+    if (configData.pagePost?.template) {
+      return configData.pagePost.template.title;
+    }
+    
     const templates = {
       comments: 'Instant DM from Comments',
       stories: 'Instant DM from Stories', 
@@ -46,7 +74,21 @@ const AutomationEditor = () => {
     return templates[automationState.template] || 'Unknown Template';
   };
 
+  const getPageInfo = () => {
+    if (configData.pagePost) {
+      return {
+        name: configData.pagePost.page_name,
+        platform: configData.pagePost.platform_name
+      };
+    }
+    return null;
+  };
+
   const platformInfo = getPlatformInfo();
+  const pageInfo = getPageInfo();
+
+  // Check if configuration is complete
+  const isConfigComplete = configData.servicePlatform && configData.pagePost;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -80,6 +122,15 @@ const AutomationEditor = () => {
               <span className="text-sm font-medium text-gray-700 hidden sm:inline">
                 {getTemplateInfo()}
               </span>
+              
+              {pageInfo && (
+                <>
+                  <span className="text-gray-300 hidden md:inline">•</span>
+                  <span className="text-xs text-gray-500 hidden md:inline">
+                    {pageInfo.name}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -95,16 +146,31 @@ const AutomationEditor = () => {
             
             <Button
               onClick={handleSave}
-              disabled={isLoading}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              disabled={isLoading || !isConfigComplete}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50"
               size="sm"
             >
               <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">{isLoading ? 'Saving...' : 'Save'}</span>
+              <span className="hidden sm:inline">{isLoading ? 'Saving...' : 'Save Automation'}</span>
             </Button>
           </div>
         </div>
       </motion.div>
+
+      {/* Configuration Status Banner */}
+      {!isConfigComplete && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-yellow-50 border-b border-yellow-200 px-6 py-3"
+        >
+          <div className="max-w-7xl mx-auto">
+            <p className="text-yellow-800 text-sm">
+              ⚠️ Complete your platform and template selection to enable automation configuration.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Main Editor Content */}
       <div className="max-w-7xl mx-auto p-4 md:p-6">
@@ -121,17 +187,23 @@ const AutomationEditor = () => {
                 Live Preview
               </h2>
               <Badge variant="outline" className="text-xs">
-                {automationState.previewMode}
+                {automationState.previewMode || 'DM'}
               </Badge>
             </div>
             
             <div className="flex-1 flex items-center justify-center min-h-0 mb-4">
-              <MobilePreview />
+              <MobilePreview 
+                configData={configData}
+                platformInfo={platformInfo}
+              />
             </div>
             
             {/* Preview Controls */}
             <div className="flex-shrink-0">
-              <PreviewControls />
+              <PreviewControls 
+                configData={configData}
+                updateConfigData={updateConfigData}
+              />
             </div>
           </motion.div>
 
@@ -154,10 +226,27 @@ const AutomationEditor = () => {
               <p className="text-sm text-gray-600 mt-1">
                 Configure your automation triggers and responses
               </p>
+              
+              {/* Configuration Progress */}
+              {isConfigComplete && (
+                <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-green-800 text-sm font-medium">
+                    ✓ Platform and template configured. Set up your automation responses below.
+                  </p>
+                </div>
+              )}
             </div>
             
             <div className="flex-1 min-h-0">
-              <ActionsPane />
+              <ActionsPane 
+                configData={configData}
+                updateConfigData={updateConfigData}
+                updateResponseConfig={updateResponseConfig}
+                validateStepConfig={validateStepConfig}
+                platformInfo={platformInfo}
+                pageInfo={pageInfo}
+                isConfigComplete={isConfigComplete}
+              />
             </div>
           </motion.div>
         </div>

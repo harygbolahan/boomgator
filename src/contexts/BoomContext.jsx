@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-toastify';
 
-const API_BASE_URL = 'https://ai.loomsuite.com/api/ai';
+const API_BASE_URL = 'https://ai.boomgator.com/api/ai';
 
 // Create the Boom Context for all app functionality
 const BoomContext = createContext(null);
@@ -201,7 +201,7 @@ export const BoomProvider = ({ children }) => {
     setWalletError(null);
     
     try {
-      const response = await axios.post('https://ai.loomsuite.com/api/checkout', {
+      const response = await axios.post('https://ai.boomgator.com/api/checkout', {
         amount: parseFloat(amount),
         product_name: "Top up wallet"
       }, {
@@ -290,10 +290,14 @@ export const BoomProvider = ({ children }) => {
       };
       
       const response = await api().post('/automations/set', completeData);
+      console.log('Automation response', response);
+      
       await getAllAutomations(); 
       toast.success('Automation created successfully');
       return response.data;
     } catch (error) {
+      console.log('Automation error', error);
+      
       const errorMsg = error?.response?.data?.message || error?.response?.data?.error || "Error creating automation";
       console.error('Error creating automation:', errorMsg);
       setAutomationsError(errorMsg);
@@ -404,7 +408,7 @@ export const BoomProvider = ({ children }) => {
     if (!isAuthenticated) return null;
     
     try {
-      const response = await api().post('https://ai.loomsuite.com/api/link/social/login', {
+      const response = await api().post('https://ai.boomgator.com/api/link/social/login', {
         type: platformType
       });
       
@@ -461,7 +465,7 @@ export const BoomProvider = ({ children }) => {
     if (!isAuthenticated) return null;
     
     try {
-      const response = await fetch('https://ai.loomsuite.com/api/ai/platform', {
+      const response = await fetch('https://ai.boomgator.com/api/ai/platform', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

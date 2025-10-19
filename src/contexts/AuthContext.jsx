@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const API_BASE_URL = 'https://ai.loomsuite.com/api/ai';
+const API_BASE_URL = 'https://ai.boomgator.com/api/ai';
 
 // Create axios instance with default config
 const api = axios.create({

@@ -7,9 +7,11 @@ import { X, Plus } from 'lucide-react';
 const ConfigSettings = ({ configData, setConfigData }) => {
   const [currentTitle, setCurrentTitle] = useState('');
   const [currentUrl, setCurrentUrl] = useState('');
+  const [newQuickLink, setNewQuickLink] = useState({ text: '', url: '' });
   
   const titles = configData.titles || [];
   const urls = configData.urls || [];
+  const quickLinks = configData.quickLinks || [];
 
   const handleLabelChange = (value) => {
     setConfigData({
@@ -51,6 +53,24 @@ const ConfigSettings = ({ configData, setConfigData }) => {
     setConfigData({
       ...configData,
       urls: urls.filter(u => u !== urlToRemove),
+    });
+  };
+
+  const handleAddQuickLink = () => {
+    const { text, url } = newQuickLink;
+    if (text.trim() && url.trim()) {
+      setConfigData({
+        ...configData,
+        quickLinks: [...quickLinks, { text: text.trim(), url: url.trim() }],
+      });
+      setNewQuickLink({ text: '', url: '' });
+    }
+  };
+
+  const handleRemoveQuickLink = (index) => {
+    setConfigData({
+      ...configData,
+      quickLinks: quickLinks.filter((_, i) => i !== index),
     });
   };
 
@@ -209,6 +229,100 @@ const ConfigSettings = ({ configData, setConfigData }) => {
         </p>
       </div>
 
+      {/* Quick Links */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium flex items-center gap-2">
+          ⚡ Quick Action Links (Optional)
+        </Label>
+        <p className="text-xs text-gray-600">
+          Create clickable action buttons with custom text and URLs for your automation responses
+        </p>
+        
+        <div className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="link-text" className="text-xs font-medium text-gray-700">
+                Button Text
+              </Label>
+              <Input
+                id="link-text"
+                value={newQuickLink.text}
+                onChange={(e) => setNewQuickLink({ ...newQuickLink, text: e.target.value })}
+                placeholder="e.g., Download Now, Book Meeting, Get Started..."
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="link-url" className="text-xs font-medium text-gray-700">
+                URL
+              </Label>
+              <Input
+                id="link-url"
+                value={newQuickLink.url}
+                onChange={(e) => setNewQuickLink({ ...newQuickLink, url: e.target.value })}
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddQuickLink())}
+                placeholder="https://example.com/action"
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={handleAddQuickLink}
+            disabled={!newQuickLink.text.trim() || !newQuickLink.url.trim()}
+            size="sm"
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Quick Link
+          </Button>
+        </div>
+
+        {quickLinks.length > 0 && (
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                {quickLinks.length} Quick Link{quickLinks.length !== 1 ? 's' : ''}
+              </span>
+              Action Buttons:
+            </div>
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {quickLinks.map((link, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-gradient-to-r from-purple-50 to-white border border-purple-200 rounded-lg px-3 py-3 group hover:from-purple-100 hover:to-purple-50 transition-all duration-200"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0"></span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-gray-900 truncate" title={link.text}>
+                        {link.text}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate" title={link.url}>
+                        {link.url}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveQuickLink(index)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0 ml-2 flex-shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className="text-xs text-gray-500 bg-purple-50 p-2 rounded border border-purple-200">
+          ⚡ <strong>Action Links:</strong> These will appear as clickable buttons in your automation responses, making it easy for users to take specific actions.
+        </p>
+      </div>
+
       {/* Configuration Summary */}
       {configData.label && (
         <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl shadow-sm">
@@ -236,6 +350,13 @@ const ConfigSettings = ({ configData, setConfigData }) => {
                 <span className="text-green-800 font-medium">{urls.length} configured</span>
               </div>
             )}
+            {quickLinks.length > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-purple-100">
+                <span className="text-purple-600">⚡</span>
+                <span className="font-medium text-gray-700">Quick Links:</span>
+                <span className="text-purple-800 font-medium">{quickLinks.length} action button{quickLinks.length !== 1 ? 's' : ''}</span>
+              </div>
+            )}
           </div>
           <div className="mt-3 p-2 bg-white rounded-lg border border-yellow-200">
             <div className="text-xs text-yellow-800 font-medium flex items-center gap-1">
@@ -249,4 +370,4 @@ const ConfigSettings = ({ configData, setConfigData }) => {
   );
 };
 
-export default ConfigSettings; 
+export default ConfigSettings;
